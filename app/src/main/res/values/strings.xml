@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">play</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
+    <string name="sign_in">Sign In</string>
+    <string name="sign_out">Sign Out</string>
+
+    <string name="channel_label">Select a channel from menu</string>
+    <string name="message_hint">Enter a message</string>
+
+    <string name="firebase_endpoint">"Firebase URL"</string>
+    <string name="channels">books,game,music,sports,travel</string>
+</resources>
