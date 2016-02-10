@@ -57,6 +57,7 @@ import com.google.cloud.solutions.managedvm.common.Message;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -351,7 +352,7 @@ public class PlayActivity extends AppCompatActivity
             public void onChildAdded(DataSnapshot snapshot, String prevKey) {
                 Message message = (Message)snapshot.getValue(Message.class);
                 // Extract attributes from Message object to display on the screen.
-                addMessage(message.getText(), fmt.format(message.getTime().get("date")) + " " + message.getDisplayName());
+                addMessage(message.getText(), fmt.format(new Date(message.getTimeLong())) + " " + message.getDisplayName());
             }
 
             @Override
