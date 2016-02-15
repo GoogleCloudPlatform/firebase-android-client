@@ -3,14 +3,14 @@ This repository contains Android client sample code for "[Using Firebase and App
 
 ## Build Requirements
 Following Google APIs are needed to be enabled from Google Developers Console.
-* Google App Engine
-* Google Compute Engine
-* Sign up with [Firebase](https://www.firebase.com/) and obtain Firebase URL.
+- Google App Engine
+- Google Compute Engine
+- Sign up with [Firebase](https://www.firebase.com/) and obtain Firebase URL.
 
 Build and test environment(verified)
-* Android Studio 1.5.1
-* Marshmallow API Level 23, x86_64, Android 6.0 (with Google APIs)
-* UI layout is optimal for Nexus 5.
+- Android Studio 1.5.1
+- Marshmallow API Level 23, x86_64, Android 6.0 (with Google APIs)
+- UI layout is optimal for Nexus 5.
 
 
 ## Configuration
