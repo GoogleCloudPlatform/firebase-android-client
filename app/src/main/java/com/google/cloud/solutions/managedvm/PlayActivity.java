@@ -64,10 +64,15 @@ import java.util.Map;
 
 /*
  * Main activity to select a channel and exchange messages with other users
- * The app expects users to authenticate with Google ID. It also sends user activity logs to a Servlet instance through Firebase.
+ * The app expects users to authenticate with Google ID. It also sends user activity logs to
+ * a Servlet instance through Firebase.
  */
-public class PlayActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, GoogleApiClient.OnConnectionFailedListener, View.OnKeyListener, View.OnClickListener {
+public class PlayActivity
+        extends AppCompatActivity
+        implements NavigationView.OnNavigationItemSelectedListener,
+        GoogleApiClient.OnConnectionFailedListener,
+        View.OnKeyListener,
+        View.OnClickListener {
 
     // Firebase keys commonly used with backend Servlet instances
     private static final String IBX = "inbox";
@@ -85,7 +90,7 @@ public class PlayActivity extends AppCompatActivity
     private String token;
     private String inbox;
     private String currentChannel;
-    private ArrayList<String> channels;
+    private List<String> channels;
     private ChildEventListener channelListener;
     private SimpleDateFormat fmt;
 
@@ -107,7 +112,8 @@ public class PlayActivity extends AppCompatActivity
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+                this, drawer, toolbar, R.string.navigation_drawer_open,
+                R.string.navigation_drawer_close);
         drawer.setDrawerListener(toggle);
         toggle.syncState();
 
@@ -116,7 +122,8 @@ public class PlayActivity extends AppCompatActivity
         navigationView.setNavigationItemSelectedListener(this);
         initChannels(getResources().getString(R.string.channels));
 
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+        GoogleSignInOptions gso =
+                new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
                 .build();
         mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -156,7 +163,7 @@ public class PlayActivity extends AppCompatActivity
         if (requestCode == RC_SIGN_IN) {
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
             Log.d(TAG, "SignInResult : " + result.isSuccess());
-            // If authenticating with Google ID is succeeded, obtain a token for Firebase authentication.
+            // If Google ID authentication is succeeded, obtain a token for Firebase authentication.
             if (result.isSuccess()) {
                 acct = result.getSignInAccount();
                 status.setText("Authenticating with Firebase...");
@@ -174,11 +181,10 @@ public class PlayActivity extends AppCompatActivity
         @Override
         protected String doInBackground(String... params) {
             try {
-                token = GoogleAuthUtil.getToken(getApplicationContext(), params[0], "oauth2:profile email");
-            } catch (IOException e) {
-                e.printStackTrace();
-                errorMessage = e.getMessage();
-            } catch (GoogleAuthException e) {
+                token = GoogleAuthUtil.getToken(getApplicationContext(),
+                        params[0],
+                        "oauth2:profile email");
+            } catch (IOException | GoogleAuthException e) {
                 e.printStackTrace();
                 errorMessage = e.getMessage();
             }
@@ -187,7 +193,7 @@ public class PlayActivity extends AppCompatActivity
 
         @Override
         protected void onPostExecute(String token) {
-            if (token != null) {
+            if ((token != null) && (!token.equals(""))) {
                 initFirebase();
                 firebase.authWithOAuthToken("google", token, new Firebase.AuthResultHandler() {
                     @Override
@@ -214,10 +220,8 @@ public class PlayActivity extends AppCompatActivity
 
     @Override
     public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.sign_out_button:
-                signOut();
-                break;
+        if (v.getId() == R.id.sign_out_button) {
+            signOut();
         }
     }
 
@@ -240,14 +244,16 @@ public class PlayActivity extends AppCompatActivity
     @Override
     public boolean onKey(View v, int keyCode, KeyEvent event) {
         if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
-            firebase.child(CHS + "/" + currentChannel).push().setValue(new Message(messageText.getText().toString(), acct.getDisplayName()));
+            firebase.child(CHS + "/" + currentChannel)
+                    .push()
+                    .setValue(new Message(messageText.getText().toString(), acct.getDisplayName()));
             return true;
         }
         return false;
     }
 
     private void addMessage(String msgString, String meta) {
-        HashMap<String, String> message = new HashMap<String, String>();
+        Map<String, String> message = new HashMap<String, String>();
         message.put("message", msgString);
         message.put("meta", meta);
         messages.add(message);
@@ -320,7 +326,8 @@ public class PlayActivity extends AppCompatActivity
         firebase.child(IBX + "/" + inbox).addValueEventListener(new ValueEventListener() {
             public void onDataChange(DataSnapshot snapshot) {
                 if (snapshot.exists()) {
-                    fbLog = new FirebaseLogger(firebase, IBX + "/" + snapshot.getValue().toString() + "/logs");
+                    fbLog = new FirebaseLogger(firebase, IBX + "/" + snapshot.getValue().toString()
+                            + "/logs");
                     firebase.child(IBX + "/" + inbox).removeEventListener(this);
                     fbLog.log(inbox, "Signed in");
                 }
@@ -341,8 +348,8 @@ public class PlayActivity extends AppCompatActivity
     private void initChannels(String channelString) {
         Log.d(TAG, "Channels : " + channelString);
         channels = new ArrayList<String>();
-        String[] topicArr = ((String)channelString).split(",");
-        for(int i = 0; i < topicArr.length; i++) {
+        String[] topicArr = channelString.split(",");
+        for (int i = 0; i < topicArr.length; i++) {
             channels.add(i, topicArr[i]);
             channelMenu.add(topicArr[i]);
         }
@@ -350,9 +357,10 @@ public class PlayActivity extends AppCompatActivity
         channelListener = new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot snapshot, String prevKey) {
-                Message message = (Message)snapshot.getValue(Message.class);
+                Message message = (Message) snapshot.getValue(Message.class);
                 // Extract attributes from Message object to display on the screen.
-                addMessage(message.getText(), fmt.format(new Date(message.getTimeLong())) + " " + message.getDisplayName());
+                addMessage(message.getText(), fmt.format(new Date(message.getTimeLong())) + " "
+                        + message.getDisplayName());
             }
 
             @Override

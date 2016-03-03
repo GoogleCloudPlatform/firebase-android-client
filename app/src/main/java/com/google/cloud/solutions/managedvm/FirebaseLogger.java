@@ -19,7 +19,8 @@ import com.firebase.client.Firebase;
 import com.google.cloud.solutions.managedvm.common.LogEntry;
 
 /*
- * FirebaseLogger pushes user event logs to a specified path. A backend Servlet instance listens to the same key and keeps track of event logs.
+ * FirebaseLogger pushes user event logs to a specified path. A backend Servlet instance listens to
+ * the same key and keeps track of event logs.
  */
 public class FirebaseLogger {
     private Firebase logRef;
