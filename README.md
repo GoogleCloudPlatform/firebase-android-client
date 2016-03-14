@@ -1,5 +1,5 @@
-# Using Firebase and App Engine Managed VM as mobile app backend
-This repository contains Android client sample code for "[Using Firebase and App Engine Managed VM as mobile app backend](https://cloud.google.com/solutions/mobile/mobile-app-backend-on-cloud-platform#firebase-managed-vms)" paper.
+# Build a mobile app using  Firebase and App Engine Managed VMs
+This repository contains Android client sample code for "[Build a mobile app using  Firebase and App Engine Managed VMs backend](https://cloud.google.com/solutions/mobile/mobile-app-backend-on-cloud-platform#firebase-managed-vms)" paper.
 
 ## Build Requirements
 Following Google APIs are needed to be enabled from Google Developers Console.
@@ -32,6 +32,7 @@ Build and test environment(verified)
 - Start a virtual device and run the app.
 - Sign in with a Google ID.
 - Select a channel from top-left menu and enter messages.
+
 ![Nexus 5](./nexus5.png)
 
 
