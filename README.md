@@ -7,6 +7,8 @@ Following Google APIs are needed to be enabled from Google Developers Console.
 - Google Compute Engine
 - Sign up with [Firebase](https://www.firebase.com/) and obtain Firebase URL.
 
+Firebase is a Google product, independent from Google Cloud Platform.
+
 Build and test environment(verified)
 - Android Studio 1.5.1
 - Marshmallow API Level 23, x86_64, Android 6.0 (with Google APIs)
