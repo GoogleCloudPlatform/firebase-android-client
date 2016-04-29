@@ -1,5 +1,5 @@
-# Build a mobile app using  Firebase and App Engine Managed VMs
-This repository contains Android client sample code for "[Build a mobile app using  Firebase and App Engine Managed VMs backend](https://cloud.google.com/solutions/mobile/mobile-app-backend-on-cloud-platform#firebase-managed-vms)" paper.
+# Build a mobile app using  Firebase and App Engine Flexible Environment
+This repository contains Android client sample code for "[Build a mobile app using  Firebase and App Engine Flexible Environment backend](https://cloud.google.com/solutions/mobile/mobile-app-backend-on-cloud-platform#firebase-managed-vms)" paper.
 
 ## Build Requirements
 Following Google APIs are needed to be enabled from Google Developers Console.
