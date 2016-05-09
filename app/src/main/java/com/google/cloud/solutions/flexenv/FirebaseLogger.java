@@ -13,10 +13,10 @@
  # limitations under the License.
  **/
 
-package com.google.cloud.solutions.managedvm;
+package com.google.cloud.solutions.flexenv;
 
 import com.firebase.client.Firebase;
-import com.google.cloud.solutions.managedvm.common.LogEntry;
+import com.google.cloud.solutions.flexenv.common.LogEntry;
 
 /*
  * FirebaseLogger pushes user event logs to a specified path. A backend Servlet instance listens to

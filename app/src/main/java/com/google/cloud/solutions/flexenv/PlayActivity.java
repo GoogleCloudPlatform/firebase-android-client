@@ -13,7 +13,7 @@
  # limitations under the License.
  **/
 
-package com.google.cloud.solutions.managedvm;
+package com.google.cloud.solutions.flexenv;
 
 import android.content.Intent;
 import android.os.AsyncTask;
@@ -52,7 +52,7 @@ import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
-import com.google.cloud.solutions.managedvm.common.Message;
+import com.google.cloud.solutions.flexenv.common.Message;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
