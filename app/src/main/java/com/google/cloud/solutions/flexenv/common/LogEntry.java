@@ -17,7 +17,7 @@ package com.google.cloud.solutions.flexenv.common;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.firebase.client.ServerValue;
+import com.google.firebase.database.ServerValue;
 
 import java.util.Map;
 

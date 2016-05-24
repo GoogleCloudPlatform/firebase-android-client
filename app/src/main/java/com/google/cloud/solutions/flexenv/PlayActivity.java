@@ -18,29 +18,25 @@ package com.google.cloud.solutions.flexenv;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.KeyEvent;
-import android.view.View;
+import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import com.firebase.client.AuthData;
-import com.firebase.client.ChildEventListener;
-import com.firebase.client.DataSnapshot;
-import com.firebase.client.Firebase;
-import com.firebase.client.FirebaseError;
-import com.firebase.client.ValueEventListener;
 import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.api.Auth;
@@ -52,7 +48,21 @@ import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.cloud.solutions.flexenv.common.Message;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -86,7 +96,9 @@ public class PlayActivity
 
     private GoogleApiClient mGoogleApiClient;
     private GoogleSignInAccount acct;
-    private Firebase firebase;
+    private DatabaseReference firebase;
+    private FirebaseAuth auth;
+    private FirebaseAuth.AuthStateListener authListener;
     private String token;
     private String inbox;
     private String currentChannel;
@@ -124,12 +136,29 @@ public class PlayActivity
 
         GoogleSignInOptions gso =
                 new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
                 .build();
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this, this)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .build();
+        auth = FirebaseAuth.getInstance();
+        authListener = new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                if (user != null) {
+                    Log.d(TAG, "onAuthStateChanged:signed_in:" + inbox);
+                    inbox = user.getUid();
+                    status.setText("Signin as " + user.getDisplayName());
+                    updateUI(true);
+                } else {
+                    Log.d(TAG, "onAuthStateChanged:signed_out");
+                    updateUI(false);
+                }
+            }
+        };
         SignInButton signInButton = (SignInButton) findViewById(R.id.sign_in_button);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
         signInButton.setScopes(gso.getScopeArray());
@@ -158,6 +187,20 @@ public class PlayActivity
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+        auth.addAuthStateListener(authListener);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        if (authListener != null) {
+            auth.removeAuthStateListener(authListener);
+        }
+    }
+
+    @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == RC_SIGN_IN) {
@@ -167,53 +210,25 @@ public class PlayActivity
             if (result.isSuccess()) {
                 acct = result.getSignInAccount();
                 status.setText("Authenticating with Firebase...");
-                new AuthTask().execute(acct.getEmail());
-                updateUI(true);
+                AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
+                auth.signInWithCredential(credential)
+                        .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                            @Override
+                            public void onComplete(@NonNull Task<AuthResult> task) {
+                                Log.d(TAG, "signInWithCredential:onComplete:" + task.isSuccessful());
+                                if (!task.isSuccessful()) {
+                                    Log.w(TAG, "signInWithCredential", task.getException());
+                                    status.setText("Firebase authentication failed : " + task.getException());
+                                }
+                                else {
+                                    firebase = FirebaseDatabase.getInstance().getReference();
+                                    requestLogger();
+                                    updateUI(true);
+                                }
+                            }
+                        });
             } else {
                 updateUI(false);
-            }
-        }
-    }
-
-    private class AuthTask extends AsyncTask<String, Integer, String> {
-        private String errorMessage = null;
-
-        @Override
-        protected String doInBackground(String... params) {
-            try {
-                token = GoogleAuthUtil.getToken(getApplicationContext(),
-                        params[0],
-                        "oauth2:profile email");
-            } catch (IOException | GoogleAuthException e) {
-                e.printStackTrace();
-                errorMessage = e.getMessage();
-            }
-            return token;
-        }
-
-        @Override
-        protected void onPostExecute(String token) {
-            if ((token != null) && (!token.equals(""))) {
-                initFirebase();
-                firebase.authWithOAuthToken("google", token, new Firebase.AuthResultHandler() {
-                    @Override
-                    public void onAuthenticated(AuthData authData) {
-                        // If Firebase authentication is succeeded, use unique ID as inbox.
-                        inbox = authData.getUid();
-                        status.setText("Authenticated with id=" + inbox);
-                        // Send a request for a Servlet instance to be assigned.
-                        requestLogger();
-                    }
-
-                    @Override
-                    public void onAuthenticationError(FirebaseError error) {
-                        Log.e(TAG, error.getDetails());
-                        status.setText(error.getMessage());
-                    }
-                });
-            }
-            else {
-                status.setText("Firebase authentication failed : " + errorMessage);
             }
         }
     }
@@ -232,7 +247,6 @@ public class PlayActivity
                     public void onResult(Status status) {
                         firebase.removeEventListener(channelListener);
                         fbLog.log(inbox, "Signed out");
-                        firebase.unauth();
                         firebase.onDisconnect();
                         token = inbox = null;
                         acct = null;
@@ -314,8 +328,7 @@ public class PlayActivity
 
     private void initFirebase() {
         channels = new ArrayList<String>();
-        Firebase.setAndroidContext(this);
-        firebase = new Firebase(getResources().getString(R.string.firebase_endpoint));
+        firebase = FirebaseDatabase.getInstance().getReference();
     }
 
     /*
@@ -333,7 +346,7 @@ public class PlayActivity
                 }
             }
 
-            public void onCancelled(FirebaseError error) {
+            public void onCancelled(DatabaseError error) {
                 Log.e(TAG, error.getDetails());
             }
         });
@@ -364,7 +377,7 @@ public class PlayActivity
             }
 
             @Override
-            public void onCancelled(FirebaseError error) {
+            public void onCancelled(DatabaseError error) {
                 Log.e(TAG, error.getDetails());
             }
 

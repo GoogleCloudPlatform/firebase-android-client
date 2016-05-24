@@ -1,34 +1,27 @@
-# Build a mobile app using  Firebase and App Engine Flexible Environment
-This repository contains Android client sample code for "[Build a mobile app using  Firebase and App Engine Flexible Environment backend](https://cloud.google.com/solutions/mobile/mobile-app-backend-on-cloud-platform#firebase-managed-vms)" paper.
+# Build a Mobile App Using  Firebase and App Engine Flexible Environment
+This repository contains Android client sample code for "[Build a Mobile App Using  Firebase and App Engine Flexible Environment](https://cloud.google.com/solutions/mobile/mobile-firebase-appengine-flexible)" paper.
 
 ## Build Requirements
 Following Google APIs are needed to be enabled from Google Developers Console.
 - Google App Engine
 - Google Compute Engine
-- Sign up with [Firebase](https://www.firebase.com/) and obtain Firebase URL.
+- Sign up on [Firebase](https://firebase.corp.google.com/) and create a new project (if you don't have one).
 
 Firebase is a Google product, independent from Google Cloud Platform.
 
 Build and test environment(verified)
-- Android Studio 1.5.1
+- Android Studio 2.2 Preview 1
 - Marshmallow API Level 23, x86_64, Android 6.0 (with Google APIs)
 - UI layout is optimal for Nexus 5.
 
 
 ## Configuration
 
-- Make sure to complete [ALL steps](https://developers.google.com/identity/sign-in/android/start-integrating) to generate the necessary credentials.
-  - App name : play
-  - Android package name : com.google.cloud.solutions.managedvm
-  - service : Google Sign-in
-
-- Configure "app/res/values/strings.xml" file.
-```xml
-...
-    <string name="firebase_endpoint">"Firebase URL"</string>
-...
-```
-
+- Login to Firebase console and click "Add Firebase to your Android app".
+- Follow instructions and make sure to place "google-services.json" file under "app" directory.
+  - App name : PlayChat
+  - Android package name : com.google.cloud.solutions.flexenv
+  - Provide SHA-1 certificate fingerprint
 
 ## Launch and test
 - Start a virtual device and run the app.
