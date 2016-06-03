@@ -1,5 +1,5 @@
 # Build a Mobile App Using  Firebase and App Engine Flexible Environment
-This repository contains Android client sample code for "[Build a Mobile App Using  Firebase and App Engine Flexible Environment](https://cloud.google.com/solutions/mobile/mobile-firebase-appengine-flexible)" paper.
+This repository contains Android client sample code for "[Build a Mobile App Using  Firebase and App Engine Flexible Environment](https://cloud.google.com/solutions/mobile/mobile-firebase-appengine-flexible)" paper. Sample backend code can be found [here](https://github.com/GoogleCloudPlatform/firebase-appengine-backend).
 
 ## Build Requirements
 Following Google APIs are needed to be enabled from Google Developers Console.
@@ -25,10 +25,10 @@ Build and test environment(verified)
 
 ## Launch and test
 - Start a virtual device and run the app.
-- Sign in with a Google ID.
+- Sign in with a Google account.
 - Select a channel from top-left menu and enter messages.
 
-![Nexus 5](./nexus5.png)
+<center>![Nexus 5](./nexus5.png)</center>
 
 
 ## License
