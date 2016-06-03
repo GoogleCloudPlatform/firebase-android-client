@@ -59,6 +59,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -143,8 +144,8 @@ public class PlayActivity
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 FirebaseUser user = firebaseAuth.getCurrentUser();
                 if (user != null) {
+                    inbox = "client-" + Integer.toString(Math.abs(user.getUid().hashCode()));
                     Log.d(TAG, "onAuthStateChanged:signed_in:" + inbox);
-                    inbox = user.getUid();
                     status.setText("Signin as " + user.getDisplayName());
                     updateUI(true);
                 } else {
