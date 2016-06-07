@@ -69,8 +69,8 @@ import java.util.Map;
 
 /*
  * Main activity to select a channel and exchange messages with other users
- * The app expects users to authenticate with Google ID. It also sends user activity logs to
- * a Servlet instance through Firebase.
+ * The app expects users to authenticate with Google ID. It also sends user
+ * activity logs to a Servlet instance through Firebase.
  */
 public class PlayActivity
         extends AppCompatActivity
@@ -313,7 +313,7 @@ public class PlayActivity
             return false;
         }
 
-        // Switching a listener to the selected channel
+        // Switching a listener to the selected channel.
         firebase.child(CHS + "/" + currentChannel).removeEventListener(channelListener);
         currentChannel = item.toString();
         firebase.child(CHS + "/" + currentChannel).addChildEventListener(channelListener);
@@ -331,8 +331,9 @@ public class PlayActivity
         firebase = FirebaseDatabase.getInstance().getReference();
     }
 
+// [START requestLogger]
     /*
-     * Request a Servlet Instance to be assigned.
+     * Request that a Servlet instance be assigned.
      */
     private void requestLogger() {
         firebase.child(IBX + "/" + inbox).removeValue();
@@ -353,10 +354,12 @@ public class PlayActivity
 
         firebase.child(REQLOG).push().setValue(inbox);
     }
+// [END requestLogger]
 
     /*
      * Initialize pre-defined channels as Activity menu.
-     * Once a channel is selected, ChildEventListener is attached and waits for messages.
+     * Once a channel is selected, ChildEventListener is attached and
+     * waits for messages.
      */
     private void initChannels(String channelString) {
         Log.d(TAG, "Channels : " + channelString);

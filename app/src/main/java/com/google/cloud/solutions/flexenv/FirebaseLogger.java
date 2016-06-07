@@ -15,12 +15,14 @@
 
 package com.google.cloud.solutions.flexenv;
 
+// [START FirebaseLogger]
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.cloud.solutions.flexenv.common.LogEntry;
 
 /*
- * FirebaseLogger pushes user event logs to a specified path. A backend Servlet instance listens to
+ * FirebaseLogger pushes user event logs to a specified path.
+ * A backend Servlet instance listens to
  * the same key and keeps track of event logs.
  */
 public class FirebaseLogger {
@@ -37,3 +39,4 @@ public class FirebaseLogger {
     }
 
 }
+// [END FirebaseLogger]
