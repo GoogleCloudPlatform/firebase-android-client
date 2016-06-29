@@ -1,5 +1,5 @@
 # Build a Mobile App Using  Firebase and App Engine Flexible Environment
-This repository contains Android client sample code for "[Build a Mobile App Using  Firebase and App Engine Flexible Environment](https://cloud.google.com/solutions/mobile/mobile-firebase-appengine-flexible)" paper. Sample backend code can be found [here](https://github.com/GoogleCloudPlatform/firebase-appengine-backend).
+This repository contains Android client sample code for "[Build a Mobile App Using  Firebase and App Engine Flexible Environment](https://cloud.google.com/solutions/mobile/mobile-firebase-app-engine-flexible)" paper. Sample backend code can be found [here](https://github.com/GoogleCloudPlatform/firebase-appengine-backend).
 
 ## Build Requirements
 Following Google APIs are needed to be enabled from Google Developers Console.
