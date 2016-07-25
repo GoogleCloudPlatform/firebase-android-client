@@ -1,19 +1,19 @@
-# Build a Mobile App Using  Firebase and App Engine Flexible Environment
-This repository contains Android client sample code for "[Build a Mobile App Using  Firebase and App Engine Flexible Environment](https://cloud.google.com/solutions/mobile/mobile-firebase-app-engine-flexible)" paper. Sample backend code can be found [here](https://github.com/GoogleCloudPlatform/firebase-appengine-backend).
+# Build a Mobile App Using Firebase and App Engine Flexible Environment
+This repository contains Android client sample code for the "[Build a Mobile App Using Firebase and App Engine Flexible Environment](https://cloud.google.com/solutions/mobile/mobile-firebase-app-engine-flexible)" solution. Sample backend code can be found [here](https://github.com/GoogleCloudPlatform/firebase-appengine-backend).
 
 ## Build Requirements
-Following Google APIs are needed to be enabled from Google Developers Console.
-- Google App Engine
-- Google Compute Engine
-- Sign up on [Firebase](https://firebase.corp.google.com/) and create a new project (if you don't have one).
+
+- Enable the following services in the Cloud console: https://console.cloud.google.com
+  - Google App Engine
+  - Google Compute Engine
+- Sign up for [Firebase](https://firebase.google.com/) and create a new project in the [Firebase console](htps://console.firebase.google.com/).
 
 Firebase is a Google product, independent from Google Cloud Platform.
 
-Build and test environment(verified)
+Build and test environment (verified)
 - Android Studio 2.2 Preview 1
 - Marshmallow API Level 23, x86_64, Android 6.0 (with Google APIs)
 - UI layout is optimal for Nexus 5.
-
 
 ## Configuration
 
