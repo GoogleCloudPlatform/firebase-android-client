@@ -17,7 +17,6 @@ package com.google.cloud.solutions.flexenv;
 
 // [START FirebaseLogger]
 import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 import com.google.cloud.solutions.flexenv.common.LogEntry;
 
 /*
@@ -25,11 +24,10 @@ import com.google.cloud.solutions.flexenv.common.LogEntry;
  * A backend Servlet instance listens to
  * the same key and keeps track of event logs.
  */
-public class FirebaseLogger {
-    private DatabaseReference logRef;
-    private String tag;
+class FirebaseLogger {
+    private final DatabaseReference logRef;
 
-    public FirebaseLogger(DatabaseReference firebase, String path) {
+    FirebaseLogger(DatabaseReference firebase, String path) {
         logRef = firebase.child(path);
     }
 

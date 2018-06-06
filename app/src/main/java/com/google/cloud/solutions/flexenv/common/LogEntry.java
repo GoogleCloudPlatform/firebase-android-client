@@ -22,15 +22,13 @@ import com.google.firebase.database.ServerValue;
 import java.util.Map;
 
 /*
- * An instance of LogEntry represents a user event log, such as signin/out and switching a channel.
+ * An instance of LogEntry represents a user event log, such as sign in/out and switching a channel.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class LogEntry {
     private String tag;
     private String log;
     private Long time;
-
-    public LogEntry() {}
 
     public LogEntry(String tag, String log) {
         this.tag = tag;
