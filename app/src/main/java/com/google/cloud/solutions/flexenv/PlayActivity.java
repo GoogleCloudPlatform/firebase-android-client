@@ -59,12 +59,12 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /*
@@ -86,7 +86,7 @@ public class PlayActivity
 
     private static final int RC_SIGN_IN = 9001;
 
-    private static String TAG = "PlayActivity";
+    private static final String TAG = "PlayActivity";
     private static FirebaseLogger fbLog;
 
     private GoogleApiClient mGoogleApiClient;
@@ -94,16 +94,13 @@ public class PlayActivity
     private DatabaseReference firebase;
     private FirebaseAuth auth;
     private FirebaseAuth.AuthStateListener authListener;
-    private String token;
     private String inbox;
     private String currentChannel;
-    private List<String> channels;
     private ChildEventListener channelListener;
     private SimpleDateFormat fmt;
 
     private Menu channelMenu;
     private TextView channelLabel;
-    private ListView messageHistory;
     private List<Map<String, String>> messages;
     private SimpleAdapter messageAdapter;
     private EditText messageText;
@@ -111,20 +108,21 @@ public class PlayActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ListView messageHistory;
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_play);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        DrawerLayout drawer = findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open,
                 R.string.navigation_drawer_close);
-        drawer.setDrawerListener(toggle);
+        drawer.addDrawerListener(toggle);
         toggle.syncState();
 
-        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        NavigationView navigationView = findViewById(R.id.nav_view);
         channelMenu = navigationView.getMenu();
         navigationView.setNavigationItemSelectedListener(this);
         initChannels(getResources().getString(R.string.channels));
@@ -146,7 +144,9 @@ public class PlayActivity
                 if (user != null) {
                     inbox = "client-" + Integer.toString(Math.abs(user.getUid().hashCode()));
                     Log.d(TAG, "onAuthStateChanged:signed_in:" + inbox);
-                    status.setText("Signin as " + user.getDisplayName());
+                    status.setText(String.format(getResources().getString(R.string.signed_in_label),
+                            user.getDisplayName())
+                    );
                     updateUI(true);
                 } else {
                     Log.d(TAG, "onAuthStateChanged:signed_out");
@@ -154,9 +154,8 @@ public class PlayActivity
                 }
             }
         };
-        SignInButton signInButton = (SignInButton) findViewById(R.id.sign_in_button);
+        SignInButton signInButton = findViewById(R.id.sign_in_button);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
-        signInButton.setScopes(gso.getScopeArray());
         signInButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -165,20 +164,20 @@ public class PlayActivity
                 startActivityForResult(signInIntent, RC_SIGN_IN);
             }
         });
-        channelLabel = (TextView) findViewById(R.id.channelLabel);
-        Button signOutButton = (Button) findViewById(R.id.sign_out_button);
+        channelLabel = findViewById(R.id.channelLabel);
+        Button signOutButton = findViewById(R.id.sign_out_button);
         signOutButton.setOnClickListener(this);
 
-        messages = new ArrayList<Map<String, String>>();
+        messages = new ArrayList<>();
         messageAdapter = new SimpleAdapter(this, messages, android.R.layout.simple_list_item_2,
                 new String[]{"message", "meta"}, new int[]{android.R.id.text1, android.R.id.text2});
-        messageHistory = (ListView) findViewById(R.id.messageHistory);
+        messageHistory = findViewById(R.id.messageHistory);
         messageHistory.setAdapter(messageAdapter);
-        messageText = (EditText) findViewById(R.id.messageText);
+        messageText = findViewById(R.id.messageText);
         messageText.setOnKeyListener(this);
-        fmt = new SimpleDateFormat("yy.MM.dd HH:mm z");
+        fmt = new SimpleDateFormat("yy.MM.dd HH:mm z", Locale.US);
 
-        status = (TextView) findViewById(R.id.status);
+        status = findViewById(R.id.status);
     }
 
     @Override
@@ -204,7 +203,7 @@ public class PlayActivity
             // If Google ID authentication is succeeded, obtain a token for Firebase authentication.
             if (result.isSuccess()) {
                 acct = result.getSignInAccount();
-                status.setText("Authenticating with Firebase...");
+                status.setText(getResources().getString(R.string.authenticating_label));
                 AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
                 auth.signInWithCredential(credential)
                         .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
@@ -213,7 +212,10 @@ public class PlayActivity
                                 Log.d(TAG, "signInWithCredential:onComplete:" + task.isSuccessful());
                                 if (!task.isSuccessful()) {
                                     Log.w(TAG, "signInWithCredential", task.getException());
-                                    status.setText("Firebase authentication failed : " + task.getException());
+                                    status.setText(String.format(
+                                            getResources().getString(R.string.authentication_failed),
+                                            task.getException())
+                                    );
                                 }
                                 else {
                                     firebase = FirebaseDatabase.getInstance().getReference();
@@ -239,11 +241,11 @@ public class PlayActivity
         Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
                 new ResultCallback<Status>() {
                     @Override
-                    public void onResult(Status status) {
+                    public void onResult(@NonNull Status status) {
                         firebase.removeEventListener(channelListener);
                         fbLog.log(inbox, "Signed out");
                         firebase.onDisconnect();
-                        token = inbox = null;
+                        inbox = null;
                         acct = null;
                     }
                 });
@@ -262,7 +264,7 @@ public class PlayActivity
     }
 
     private void addMessage(String msgString, String meta) {
-        Map<String, String> message = new HashMap<String, String>();
+        Map<String, String> message = new HashMap<>();
         message.put("message", msgString);
         message.put("meta", meta);
         messages.add(message);
@@ -291,7 +293,7 @@ public class PlayActivity
 
     @Override
     public void onBackPressed() {
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        DrawerLayout drawer = findViewById(R.id.drawer_layout);
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
         } else {
@@ -300,8 +302,8 @@ public class PlayActivity
     }
 
     @Override
-    public boolean onNavigationItemSelected(MenuItem item) {
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        DrawerLayout drawer = findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         messages.clear();
 
@@ -324,12 +326,7 @@ public class PlayActivity
     }
 
     @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {}
-
-    private void initFirebase() {
-        channels = new ArrayList<String>();
-        firebase = FirebaseDatabase.getInstance().getReference();
-    }
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {}
 
 // [START requestLogger]
     /*
@@ -338,16 +335,18 @@ public class PlayActivity
     private void requestLogger() {
         firebase.child(IBX + "/" + inbox).removeValue();
         firebase.child(IBX + "/" + inbox).addValueEventListener(new ValueEventListener() {
-            public void onDataChange(DataSnapshot snapshot) {
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists()) {
-                    fbLog = new FirebaseLogger(firebase, IBX + "/" + snapshot.getValue().toString()
-                            + "/logs");
-                    firebase.child(IBX + "/" + inbox).removeEventListener(this);
-                    fbLog.log(inbox, "Signed in");
+                    if(snapshot.getValue() != null) {
+                        fbLog = new FirebaseLogger(firebase, IBX + "/" + snapshot.getValue().toString()
+                                + "/logs");
+                        firebase.child(IBX + "/" + inbox).removeEventListener(this);
+                        fbLog.log(inbox, "Signed in");
+                    }
                 }
             }
 
-            public void onCancelled(DatabaseError error) {
+            public void onCancelled(@NonNull DatabaseError error) {
                 Log.e(TAG, error.getDetails());
             }
         });
@@ -363,35 +362,35 @@ public class PlayActivity
      */
     private void initChannels(String channelString) {
         Log.d(TAG, "Channels : " + channelString);
-        channels = new ArrayList<String>();
         String[] topicArr = channelString.split(",");
-        for (int i = 0; i < topicArr.length; i++) {
-            channels.add(i, topicArr[i]);
-            channelMenu.add(topicArr[i]);
+        for (String topic : topicArr) {
+            channelMenu.add(topic);
         }
 
         channelListener = new ChildEventListener() {
             @Override
-            public void onChildAdded(DataSnapshot snapshot, String prevKey) {
-                Message message = (Message) snapshot.getValue(Message.class);
+            public void onChildAdded(@NonNull DataSnapshot snapshot, String prevKey) {
+                Message message = snapshot.getValue(Message.class);
                 // Extract attributes from Message object to display on the screen.
-                addMessage(message.getText(), fmt.format(new Date(message.getTimeLong())) + " "
-                        + message.getDisplayName());
+                if(message != null && !message.getText().isEmpty()) {
+                    addMessage(message.getText(), fmt.format(new Date(message.getTimeLong())) + " "
+                            + message.getDisplayName());
+                }
             }
 
             @Override
-            public void onCancelled(DatabaseError error) {
+            public void onCancelled(@NonNull DatabaseError error) {
                 Log.e(TAG, error.getDetails());
             }
 
             @Override
-            public void onChildChanged(DataSnapshot snapshot, String prevKey) {}
+            public void onChildChanged(@NonNull DataSnapshot snapshot, String prevKey) {}
 
             @Override
-            public void onChildRemoved(DataSnapshot snapshot) {}
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {}
 
             @Override
-            public void onChildMoved(DataSnapshot snapshot, String prevKey) {}
+            public void onChildMoved(@NonNull DataSnapshot snapshot, String prevKey) {}
         };
     }
 }
