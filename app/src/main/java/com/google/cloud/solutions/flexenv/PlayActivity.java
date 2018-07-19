@@ -246,13 +246,18 @@ public class PlayActivity
                     @Override
                     public void onResult(@NonNull Status status) {
                         databaseReference.removeEventListener(channelListener);
-                        fbLog.log(inbox, "Signed out");
                         databaseReference.onDisconnect();
                         inbox = null;
                         acct = null;
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                updateUI(false);
+                            }
+                        });
+                        fbLog.log(inbox, "Signed out");
                     }
                 });
-        updateUI(false);
     }
 
     @Override
