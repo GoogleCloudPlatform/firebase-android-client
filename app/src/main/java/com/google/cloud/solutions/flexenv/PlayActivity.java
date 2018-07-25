@@ -91,7 +91,7 @@ public class PlayActivity
 
     private GoogleApiClient mGoogleApiClient;
     private GoogleSignInAccount acct;
-    private DatabaseReference firebase;
+    private DatabaseReference databaseReference;
     private FirebaseAuth auth;
     private FirebaseAuth.AuthStateListener authListener;
     private String inbox;
@@ -148,12 +148,16 @@ public class PlayActivity
                             user.getDisplayName())
                     );
                     updateUI(true);
+
+                    requestLogger();
+
                 } else {
                     Log.d(TAG, "onAuthStateChanged:signed_out");
                     updateUI(false);
                 }
             }
         };
+
         SignInButton signInButton = findViewById(R.id.sign_in_button);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
         signInButton.setOnClickListener(new View.OnClickListener() {
@@ -218,8 +222,7 @@ public class PlayActivity
                                     );
                                 }
                                 else {
-                                    firebase = FirebaseDatabase.getInstance().getReference();
-                                    requestLogger();
+                                    fbLog.log(inbox, "Signed in");
                                     updateUI(true);
                                 }
                             }
@@ -242,20 +245,25 @@ public class PlayActivity
                 new ResultCallback<Status>() {
                     @Override
                     public void onResult(@NonNull Status status) {
-                        firebase.removeEventListener(channelListener);
-                        fbLog.log(inbox, "Signed out");
-                        firebase.onDisconnect();
+                        databaseReference.removeEventListener(channelListener);
+                        databaseReference.onDisconnect();
                         inbox = null;
                         acct = null;
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                updateUI(false);
+                            }
+                        });
+                        fbLog.log(inbox, "Signed out");
                     }
                 });
-        updateUI(false);
     }
 
     @Override
     public boolean onKey(View v, int keyCode, KeyEvent event) {
         if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
-            firebase.child(CHS + "/" + currentChannel)
+            databaseReference.child(CHS + "/" + currentChannel)
                     .push()
                     .setValue(new Message(messageText.getText().toString(), acct.getDisplayName()));
             return true;
@@ -316,9 +324,9 @@ public class PlayActivity
         }
 
         // Switching a listener to the selected channel.
-        firebase.child(CHS + "/" + currentChannel).removeEventListener(channelListener);
+        databaseReference.child(CHS + "/" + currentChannel).removeEventListener(channelListener);
         currentChannel = item.toString();
-        firebase.child(CHS + "/" + currentChannel).addChildEventListener(channelListener);
+        databaseReference.child(CHS + "/" + currentChannel).addChildEventListener(channelListener);
 
         channelLabel.setText(currentChannel);
 
@@ -333,16 +341,16 @@ public class PlayActivity
      * Request that a Servlet instance be assigned.
      */
     private void requestLogger() {
-        firebase.child(IBX + "/" + inbox).removeValue();
-        firebase.child(IBX + "/" + inbox).addValueEventListener(new ValueEventListener() {
+        databaseReference = FirebaseDatabase.getInstance().getReference();
+        databaseReference.child(IBX + "/" + inbox).removeValue();
+        databaseReference.child(IBX + "/" + inbox).addValueEventListener(new ValueEventListener() {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                if (snapshot.exists()) {
-                    if(snapshot.getValue() != null) {
-                        fbLog = new FirebaseLogger(firebase, IBX + "/" + snapshot.getValue().toString()
-                                + "/logs");
-                        firebase.child(IBX + "/" + inbox).removeEventListener(this);
-                        fbLog.log(inbox, "Signed in");
-                    }
+                if (snapshot.exists() && snapshot.getValue(String.class) != null) {
+                    fbLog = new FirebaseLogger(
+                            databaseReference,
+                            IBX + "/" + snapshot.getValue(String.class) + "/logs"
+                    );
+                    databaseReference.child(IBX + "/" + inbox).removeEventListener(this);
                 }
             }
 
@@ -351,7 +359,7 @@ public class PlayActivity
             }
         });
 
-        firebase.child(REQLOG).push().setValue(inbox);
+        databaseReference.child(REQLOG).push().setValue(inbox);
     }
 // [END requestLogger]
 
