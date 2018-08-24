@@ -36,7 +36,6 @@ import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
 import com.google.android.gms.auth.api.Auth;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
@@ -70,7 +69,7 @@ import java.util.Map;
 /*
  * Main activity to select a channel and exchange messages with other users
  * The app expects users to authenticate with Google ID. It also sends user
- * activity logs to a Servlet instance through Firebase.
+ * activity logs to a servlet instance through Firebase.
  */
 public class PlayActivity
         extends AppCompatActivity
@@ -79,7 +78,7 @@ public class PlayActivity
         View.OnKeyListener,
         View.OnClickListener {
 
-    // Firebase keys commonly used with backend Servlet instances
+    // Firebase keys commonly used with backend servlet instances
     private static final String IBX = "inbox";
     private static final String CHS = "channels";
     private static final String REQLOG = "requestLogger";
@@ -90,9 +89,8 @@ public class PlayActivity
     private static FirebaseLogger fbLog;
 
     private GoogleApiClient mGoogleApiClient;
-    private GoogleSignInAccount acct;
+    private FirebaseUser user;
     private DatabaseReference databaseReference;
-    private FirebaseAuth auth;
     private FirebaseAuth.AuthStateListener authListener;
     private String inbox;
     private String currentChannel;
@@ -136,21 +134,23 @@ public class PlayActivity
                 .enableAutoManage(this, this)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .build();
-        auth = FirebaseAuth.getInstance();
         authListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                FirebaseUser user = firebaseAuth.getCurrentUser();
+                user = firebaseAuth.getCurrentUser();
                 if (user != null) {
                     inbox = "client-" + Integer.toString(Math.abs(user.getUid().hashCode()));
-                    Log.d(TAG, "onAuthStateChanged:signed_in:" + inbox);
-                    status.setText(String.format(getResources().getString(R.string.signed_in_label),
-                            user.getDisplayName())
-                    );
-                    updateUI(true);
-
-                    requestLogger();
-
+                    requestLogger(new LoggerListener() {
+                        @Override
+                        public void onLoggerAssigned() {
+                            Log.d(TAG, "onAuthStateChanged:signed_in:" + inbox);
+                            status.setText(String.format(getResources().getString(R.string.signed_in_label),
+                                    user.getDisplayName())
+                            );
+                            fbLog.log(inbox, "Signed in");
+                            updateUI(true);
+                        }
+                    });
                 } else {
                     Log.d(TAG, "onAuthStateChanged:signed_out");
                     updateUI(false);
@@ -187,14 +187,14 @@ public class PlayActivity
     @Override
     public void onStart() {
         super.onStart();
-        auth.addAuthStateListener(authListener);
+        FirebaseAuth.getInstance().addAuthStateListener(authListener);
     }
 
     @Override
     public void onStop() {
         super.onStop();
         if (authListener != null) {
-            auth.removeAuthStateListener(authListener);
+            FirebaseAuth.getInstance().removeAuthStateListener(authListener);
         }
     }
 
@@ -204,12 +204,13 @@ public class PlayActivity
         if (requestCode == RC_SIGN_IN) {
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
             Log.d(TAG, "SignInResult : " + result.isSuccess());
-            // If Google ID authentication is succeeded, obtain a token for Firebase authentication.
-            if (result.isSuccess()) {
-                acct = result.getSignInAccount();
+            // If Google ID authentication is successful, obtain a token for Firebase authentication.
+            if (result.isSuccess() && result.getSignInAccount() != null) {
+                user = FirebaseAuth.getInstance().getCurrentUser();
                 status.setText(getResources().getString(R.string.authenticating_label));
-                AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
-                auth.signInWithCredential(credential)
+                AuthCredential credential = GoogleAuthProvider.getCredential(
+                        result.getSignInAccount().getIdToken(), null);
+                FirebaseAuth.getInstance().signInWithCredential(credential)
                         .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                             @Override
                             public void onComplete(@NonNull Task<AuthResult> task) {
@@ -220,10 +221,6 @@ public class PlayActivity
                                             getResources().getString(R.string.authentication_failed),
                                             task.getException())
                                     );
-                                }
-                                else {
-                                    fbLog.log(inbox, "Signed in");
-                                    updateUI(true);
                                 }
                             }
                         });
@@ -248,7 +245,7 @@ public class PlayActivity
                         databaseReference.removeEventListener(channelListener);
                         databaseReference.onDisconnect();
                         inbox = null;
-                        acct = null;
+                        user = null;
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -265,7 +262,7 @@ public class PlayActivity
         if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
             databaseReference.child(CHS + "/" + currentChannel)
                     .push()
-                    .setValue(new Message(messageText.getText().toString(), acct.getDisplayName()));
+                    .setValue(new Message(messageText.getText().toString(), user.getDisplayName()));
             return true;
         }
         return false;
@@ -338,9 +335,9 @@ public class PlayActivity
 
 // [START requestLogger]
     /*
-     * Request that a Servlet instance be assigned.
+     * Request that a servlet instance be assigned.
      */
-    private void requestLogger() {
+    private void requestLogger(final LoggerListener loggerListener) {
         databaseReference = FirebaseDatabase.getInstance().getReference();
         databaseReference.child(IBX + "/" + inbox).removeValue();
         databaseReference.child(IBX + "/" + inbox).addValueEventListener(new ValueEventListener() {
@@ -351,6 +348,7 @@ public class PlayActivity
                             IBX + "/" + snapshot.getValue(String.class) + "/logs"
                     );
                     databaseReference.child(IBX + "/" + inbox).removeEventListener(this);
+                    loggerListener.onLoggerAssigned();
                 }
             }
 
@@ -364,7 +362,7 @@ public class PlayActivity
 // [END requestLogger]
 
     /*
-     * Initialize pre-defined channels as Activity menu.
+     * Initialize predefined channels as activity menu.
      * Once a channel is selected, ChildEventListener is attached and
      * waits for messages.
      */
@@ -400,5 +398,15 @@ public class PlayActivity
             @Override
             public void onChildMoved(@NonNull DataSnapshot snapshot, String prevKey) {}
         };
+    }
+
+    /**
+     * A listener to get notifications about server-side loggers.
+     */
+    private interface LoggerListener {
+        /**
+         * Called when a logger has been assigned to this client.
+         */
+        void onLoggerAssigned();
     }
 }
