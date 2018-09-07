@@ -60,6 +60,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -86,6 +87,7 @@ public class PlayActivity
     private static final int RC_SIGN_IN = 9001;
 
     private static final String TAG = "PlayActivity";
+    private static final String CURRENT_CHANNEL_KEY = "CURRENT_CHANNEL_KEY";
     private static FirebaseLogger fbLog;
 
     private GoogleApiClient mGoogleApiClient;
@@ -123,7 +125,7 @@ public class PlayActivity
         NavigationView navigationView = findViewById(R.id.nav_view);
         channelMenu = navigationView.getMenu();
         navigationView.setNavigationItemSelectedListener(this);
-        initChannels(getResources().getString(R.string.channels));
+        initChannels();
 
         GoogleSignInOptions gso =
                 new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -242,6 +244,7 @@ public class PlayActivity
                 new ResultCallback<Status>() {
                     @Override
                     public void onResult(@NonNull Status status) {
+                        FirebaseAuth.getInstance().signOut();
                         databaseReference.removeEventListener(channelListener);
                         databaseReference.onDisconnect();
                         inbox = null;
@@ -285,13 +288,19 @@ public class PlayActivity
             findViewById(R.id.channelLabel).setVisibility(View.VISIBLE);
             findViewById(R.id.messageText).setVisibility(View.VISIBLE);
             findViewById(R.id.messageHistory).setVisibility(View.VISIBLE);
+            findViewById(R.id.status).setVisibility(View.VISIBLE);
+
+            // Select the first channel in the array if there's no channel selected
+            switchChannel(currentChannel != null ? currentChannel :
+                    getResources().getStringArray(R.array.channels)[0]);
         }
         else {
             findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
             findViewById(R.id.sign_out_button).setVisibility(View.GONE);
-            findViewById(R.id.channelLabel).setVisibility(View.INVISIBLE);
-            findViewById(R.id.messageText).setVisibility(View.INVISIBLE);
-            findViewById(R.id.messageHistory).setVisibility(View.INVISIBLE);
+            findViewById(R.id.channelLabel).setVisibility(View.GONE);
+            findViewById(R.id.messageText).setVisibility(View.GONE);
+            findViewById(R.id.messageHistory).setVisibility(View.GONE);
+            findViewById(R.id.status).setVisibility(View.GONE);
             ((TextView)findViewById(R.id.status)).setText("");
         }
     }
@@ -310,24 +319,36 @@ public class PlayActivity
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
+
+        switchChannel(item.toString());
+
+        return true;
+    }
+
+    private void switchChannel(String channel) {
         messages.clear();
 
-        String msg = "Switching channel to '" + item.toString() + "'";
-        try {
-            fbLog.log(inbox, msg);
-        } catch(NullPointerException e) {
-            updateUI(false);
-            return false;
-        }
+        String msg = "Switching channel to '" + channel + "'";
+        fbLog.log(inbox, msg);
 
         // Switching a listener to the selected channel.
         databaseReference.child(CHS + "/" + currentChannel).removeEventListener(channelListener);
-        currentChannel = item.toString();
+        currentChannel = channel;
         databaseReference.child(CHS + "/" + currentChannel).addChildEventListener(channelListener);
 
         channelLabel.setText(currentChannel);
+    }
 
-        return true;
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putString(CURRENT_CHANNEL_KEY, currentChannel);
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        currentChannel = savedInstanceState.getString(CURRENT_CHANNEL_KEY);
+        super.onRestoreInstanceState(savedInstanceState);
     }
 
     @Override
@@ -366,10 +387,10 @@ public class PlayActivity
      * Once a channel is selected, ChildEventListener is attached and
      * waits for messages.
      */
-    private void initChannels(String channelString) {
-        Log.d(TAG, "Channels : " + channelString);
-        String[] topicArr = channelString.split(",");
-        for (String topic : topicArr) {
+    private void initChannels() {
+        String[] channelArray = getResources().getStringArray(R.array.channels);
+        Log.d(TAG, "Channels : " + Arrays.toString(channelArray));
+        for (String topic : channelArray) {
             channelMenu.add(topic);
         }
 
