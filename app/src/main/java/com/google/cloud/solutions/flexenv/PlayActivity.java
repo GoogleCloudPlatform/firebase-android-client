@@ -97,7 +97,6 @@ public class PlayActivity
     private FirebaseUser currentUser;
     private DatabaseReference databaseReference;
     private String firebaseLoggerPath;
-    private FirebaseAuth.AuthStateListener authListener;
     private String inbox;
     private String currentChannel;
     private ChildEventListener channelListener;
@@ -140,29 +139,6 @@ public class PlayActivity
                 .enableAutoManage(this, this)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .build();
-        authListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                currentUser = firebaseAuth.getCurrentUser();
-                if (currentUser != null) {
-                    inbox = "client-" + Integer.toString(Math.abs(currentUser.getUid().hashCode()));
-                    requestLogger(new LoggerListener() {
-                        @Override
-                        public void onLoggerAssigned() {
-                            Log.d(TAG, "onAuthStateChanged:signed_in:" + inbox);
-                            status.setText(String.format(getResources().getString(R.string.signed_in_label),
-                                    currentUser.getDisplayName())
-                            );
-                            fbLog.log(inbox, "Signed in");
-                            updateUI();
-                        }
-                    });
-                } else {
-                    Log.d(TAG, "onAuthStateChanged:signed_out");
-                    updateUI();
-                }
-            }
-        };
 
         SignInButton signInButton = findViewById(R.id.sign_in_button);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
@@ -193,16 +169,12 @@ public class PlayActivity
     @Override
     public void onStart() {
         super.onStart();
-        FirebaseAuth.getInstance().addAuthStateListener(authListener);
         currentUser = FirebaseAuth.getInstance().getCurrentUser();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        if (authListener != null) {
-            FirebaseAuth.getInstance().removeAuthStateListener(authListener);
-        }
     }
 
     @Override
@@ -213,7 +185,6 @@ public class PlayActivity
             Log.d(TAG, "SignInResult : " + result.isSuccess());
             // If Google ID authentication is successful, obtain a token for Firebase authentication.
             if (result.isSuccess() && result.getSignInAccount() != null) {
-                currentUser = FirebaseAuth.getInstance().getCurrentUser();
                 status.setText(getResources().getString(R.string.authenticating_label));
                 AuthCredential credential = GoogleAuthProvider.getCredential(
                         result.getSignInAccount().getIdToken(), null);
@@ -222,7 +193,26 @@ public class PlayActivity
                             @Override
                             public void onComplete(@NonNull Task<AuthResult> task) {
                                 Log.d(TAG, "signInWithCredential:onComplete:" + task.isSuccessful());
-                                if (!task.isSuccessful()) {
+                                if (task.isSuccessful()) {
+                                    currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                                    if (currentUser != null) {
+                                        inbox = "client-" + Integer.toString(Math.abs(currentUser.getUid().hashCode()));
+                                        requestLogger(new LoggerListener() {
+                                            @Override
+                                            public void onLoggerAssigned() {
+                                                Log.d(TAG, "onAuthStateChanged:signed_in:" + inbox);
+                                                status.setText(String.format(getResources().getString(R.string.signed_in_label),
+                                                        currentUser.getDisplayName())
+                                                );
+                                                fbLog.log(inbox, "Signed in");
+                                                updateUI();
+                                            }
+                                        });
+                                    } else {
+                                        Log.d(TAG, "onAuthStateChanged:signed_out");
+                                        updateUI();
+                                    }
+                                } else {
                                     Log.w(TAG, "signInWithCredential", task.getException());
                                     status.setText(String.format(
                                             getResources().getString(R.string.authentication_failed),
