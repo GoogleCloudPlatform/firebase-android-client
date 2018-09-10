@@ -16,8 +16,9 @@
 package com.google.cloud.solutions.flexenv;
 
 // [START FirebaseLogger]
-import com.google.firebase.database.DatabaseReference;
+
 import com.google.cloud.solutions.flexenv.common.LogEntry;
+import com.google.firebase.database.DatabaseReference;
 
 /*
  * FirebaseLogger pushes user event logs to a specified path.

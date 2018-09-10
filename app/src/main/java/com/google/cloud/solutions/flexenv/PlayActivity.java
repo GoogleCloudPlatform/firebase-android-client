@@ -182,7 +182,7 @@ public class PlayActivity
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == RC_SIGN_IN) {
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
-            Log.d(TAG, "SignInResult : " + result.isSuccess());
+            Log.d(TAG, "Google authentication status: " + result.getStatus().getStatusMessage());
             // If Google ID authentication is successful, obtain a token for Firebase authentication.
             if (result.isSuccess() && result.getSignInAccount() != null) {
                 status.setText(getResources().getString(R.string.authenticating_label));
@@ -192,7 +192,7 @@ public class PlayActivity
                         .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                             @Override
                             public void onComplete(@NonNull Task<AuthResult> task) {
-                                Log.d(TAG, "signInWithCredential:onComplete:" + task.isSuccessful());
+                                Log.d(TAG, "signInWithCredential:onComplete Successful: " + task.isSuccessful());
                                 if (task.isSuccessful()) {
                                     currentUser = FirebaseAuth.getInstance().getCurrentUser();
                                     if (currentUser != null) {
@@ -200,7 +200,7 @@ public class PlayActivity
                                         requestLogger(new LoggerListener() {
                                             @Override
                                             public void onLoggerAssigned() {
-                                                Log.d(TAG, "onAuthStateChanged:signed_in:" + inbox);
+                                                Log.d(TAG, "onLoggerAssigned logger id: " + inbox);
                                                 status.setText(String.format(getResources().getString(R.string.signed_in_label),
                                                         currentUser.getDisplayName())
                                                 );
@@ -209,11 +209,10 @@ public class PlayActivity
                                             }
                                         });
                                     } else {
-                                        Log.d(TAG, "onAuthStateChanged:signed_out");
                                         updateUI();
                                     }
                                 } else {
-                                    Log.w(TAG, "signInWithCredential", task.getException());
+                                    Log.w(TAG, "signInWithCredential:onComplete", task.getException());
                                     status.setText(String.format(
                                             getResources().getString(R.string.authentication_failed),
                                             task.getException())
