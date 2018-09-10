@@ -23,7 +23,7 @@ import com.google.firebase.database.FirebaseDatabase;
 
 /*
  * FirebaseLogger pushes user event logs to a specified path.
- * A backend Servlet instance listens to
+ * A backend servlet instance listens to
  * the same key and keeps track of event logs.
  */
 class FirebaseLogger {
