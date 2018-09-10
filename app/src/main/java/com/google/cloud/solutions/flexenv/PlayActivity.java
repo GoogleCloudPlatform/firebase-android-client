@@ -187,9 +187,6 @@ public class PlayActivity
                                             @Override
                                             public void onLoggerAssigned() {
                                                 Log.d(TAG, "onLoggerAssigned logger id: " + inbox);
-                                                status.setText(String.format(getResources().getString(R.string.signed_in_label),
-                                                        currentUser.getDisplayName())
-                                                );
                                                 fbLog.log(inbox, "Signed in");
                                                 updateUI();
                                             }
@@ -274,6 +271,11 @@ public class PlayActivity
             findViewById(R.id.channelLabel).setVisibility(View.VISIBLE);
             findViewById(R.id.messageText).setVisibility(View.VISIBLE);
             findViewById(R.id.messageHistory).setVisibility(View.VISIBLE);
+
+            status.setText(
+                    String.format(getResources().getString(R.string.signed_in_label),
+                    currentUser.getDisplayName())
+            );
             findViewById(R.id.status).setVisibility(View.VISIBLE);
 
             // Select the first channel in the array if there's no channel selected
