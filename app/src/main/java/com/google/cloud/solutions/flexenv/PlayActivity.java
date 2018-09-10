@@ -1,3 +1,4 @@
+
 /**
  # Copyright 2016 Google LLC.
  # Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,11 +89,14 @@ public class PlayActivity
 
     private static final String TAG = "PlayActivity";
     private static final String CURRENT_CHANNEL_KEY = "CURRENT_CHANNEL_KEY";
+    private static final String INBOX_KEY = "INBOX_KEY";
+    private static final String FIREBASE_LOGGER_PATH_KEY = "FIREBASE_LOGGER_PATH_KEY";
     private static FirebaseLogger fbLog;
 
     private GoogleApiClient mGoogleApiClient;
-    private FirebaseUser user;
+    private FirebaseUser currentUser;
     private DatabaseReference databaseReference;
+    private String firebaseLoggerPath;
     private FirebaseAuth.AuthStateListener authListener;
     private String inbox;
     private String currentChannel;
@@ -139,15 +143,15 @@ public class PlayActivity
         authListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                user = firebaseAuth.getCurrentUser();
-                if (user != null) {
-                    inbox = "client-" + Integer.toString(Math.abs(user.getUid().hashCode()));
+                currentUser = firebaseAuth.getCurrentUser();
+                if (currentUser != null) {
+                    inbox = "client-" + Integer.toString(Math.abs(currentUser.getUid().hashCode()));
                     requestLogger(new LoggerListener() {
                         @Override
                         public void onLoggerAssigned() {
                             Log.d(TAG, "onAuthStateChanged:signed_in:" + inbox);
                             status.setText(String.format(getResources().getString(R.string.signed_in_label),
-                                    user.getDisplayName())
+                                    currentUser.getDisplayName())
                             );
                             fbLog.log(inbox, "Signed in");
                             updateUI(true);
@@ -190,6 +194,7 @@ public class PlayActivity
     public void onStart() {
         super.onStart();
         FirebaseAuth.getInstance().addAuthStateListener(authListener);
+        currentUser = FirebaseAuth.getInstance().getCurrentUser();
     }
 
     @Override
@@ -208,7 +213,7 @@ public class PlayActivity
             Log.d(TAG, "SignInResult : " + result.isSuccess());
             // If Google ID authentication is successful, obtain a token for Firebase authentication.
             if (result.isSuccess() && result.getSignInAccount() != null) {
-                user = FirebaseAuth.getInstance().getCurrentUser();
+                currentUser = FirebaseAuth.getInstance().getCurrentUser();
                 status.setText(getResources().getString(R.string.authenticating_label));
                 AuthCredential credential = GoogleAuthProvider.getCredential(
                         result.getSignInAccount().getIdToken(), null);
@@ -248,7 +253,7 @@ public class PlayActivity
                         databaseReference.removeEventListener(channelListener);
                         databaseReference.onDisconnect();
                         inbox = null;
-                        user = null;
+                        currentUser = null;
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -265,7 +270,7 @@ public class PlayActivity
         if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
             databaseReference.child(CHS + "/" + currentChannel)
                     .push()
-                    .setValue(new Message(messageText.getText().toString(), user.getDisplayName()));
+                    .setValue(new Message(messageText.getText().toString(), currentUser.getDisplayName()));
             return true;
         }
         return false;
@@ -342,12 +347,21 @@ public class PlayActivity
     @Override
     public void onSaveInstanceState(Bundle outState) {
         outState.putString(CURRENT_CHANNEL_KEY, currentChannel);
+        outState.putString(INBOX_KEY, inbox);
+        outState.putString(FIREBASE_LOGGER_PATH_KEY, firebaseLoggerPath);
         super.onSaveInstanceState(outState);
     }
 
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         currentChannel = savedInstanceState.getString(CURRENT_CHANNEL_KEY);
+        inbox = savedInstanceState.getString(INBOX_KEY);
+        firebaseLoggerPath = savedInstanceState.getString(FIREBASE_LOGGER_PATH_KEY);
+        if (currentUser != null) {
+            databaseReference = FirebaseDatabase.getInstance().getReference();
+            fbLog = new FirebaseLogger(databaseReference, firebaseLoggerPath);
+            updateUI(true);
+        }
         super.onRestoreInstanceState(savedInstanceState);
     }
 
@@ -364,10 +378,8 @@ public class PlayActivity
         databaseReference.child(IBX + "/" + inbox).addValueEventListener(new ValueEventListener() {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists() && snapshot.getValue(String.class) != null) {
-                    fbLog = new FirebaseLogger(
-                            databaseReference,
-                            IBX + "/" + snapshot.getValue(String.class) + "/logs"
-                    );
+                    firebaseLoggerPath = IBX + "/" + snapshot.getValue(String.class) + "/logs";
+                    fbLog = new FirebaseLogger(databaseReference, firebaseLoggerPath);
                     databaseReference.child(IBX + "/" + inbox).removeEventListener(this);
                     loggerListener.onLoggerAssigned();
                 }
