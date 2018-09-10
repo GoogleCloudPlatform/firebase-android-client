@@ -154,12 +154,12 @@ public class PlayActivity
                                     currentUser.getDisplayName())
                             );
                             fbLog.log(inbox, "Signed in");
-                            updateUI(true);
+                            updateUI();
                         }
                     });
                 } else {
                     Log.d(TAG, "onAuthStateChanged:signed_out");
-                    updateUI(false);
+                    updateUI();
                 }
             }
         };
@@ -232,7 +232,7 @@ public class PlayActivity
                             }
                         });
             } else {
-                updateUI(false);
+                updateUI();
             }
         }
     }
@@ -257,7 +257,7 @@ public class PlayActivity
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                updateUI(false);
+                                updateUI();
                             }
                         });
                         fbLog.log(inbox, "Signed out");
@@ -286,8 +286,8 @@ public class PlayActivity
         messageText.setText("");
     }
 
-    private void updateUI(boolean signedIn) {
-        if (signedIn) {
+    private void updateUI() {
+        if (currentUser != null) {
             findViewById(R.id.sign_in_button).setVisibility(View.GONE);
             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
             findViewById(R.id.channelLabel).setVisibility(View.VISIBLE);
@@ -360,7 +360,7 @@ public class PlayActivity
         if (currentUser != null) {
             databaseReference = FirebaseDatabase.getInstance().getReference();
             fbLog = new FirebaseLogger(databaseReference, firebaseLoggerPath);
-            updateUI(true);
+            updateUI();
         }
         super.onRestoreInstanceState(savedInstanceState);
     }
