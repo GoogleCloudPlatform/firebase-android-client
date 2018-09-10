@@ -1,18 +1,17 @@
-
-/**
- # Copyright 2016 Google LLC.
- # Licensed under the Apache License, Version 2.0 (the "License");
- # you may not use this file except in compliance with the License.
- # You may obtain a copy of the License at
- #
- # http://www.apache.org/licenses/LICENSE-2.0
- #
- # Unless required by applicable law or agreed to in writing, software
- # distributed under the License is distributed on an "AS IS" BASIS,
- # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- # See the License for the specific language governing permissions and
- # limitations under the License.
- **/
+/*
+ * Copyright 2016 Google LLC.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.google.cloud.solutions.flexenv;
 
@@ -94,8 +93,6 @@ public class PlayActivity
     private static FirebaseLogger fbLog;
 
     private GoogleApiClient mGoogleApiClient;
-    private FirebaseUser currentUser;
-    private DatabaseReference databaseReference;
     private String firebaseLoggerPath;
     private String inbox;
     private String currentChannel;
@@ -167,17 +164,6 @@ public class PlayActivity
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
-        currentUser = FirebaseAuth.getInstance().getCurrentUser();
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-    }
-
-    @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == RC_SIGN_IN) {
@@ -194,7 +180,7 @@ public class PlayActivity
                             public void onComplete(@NonNull Task<AuthResult> task) {
                                 Log.d(TAG, "signInWithCredential:onComplete Successful: " + task.isSuccessful());
                                 if (task.isSuccessful()) {
-                                    currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                                    final FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
                                     if (currentUser != null) {
                                         inbox = "client-" + Integer.toString(Math.abs(currentUser.getUid().hashCode()));
                                         requestLogger(new LoggerListener() {
@@ -239,10 +225,10 @@ public class PlayActivity
                     @Override
                     public void onResult(@NonNull Status status) {
                         FirebaseAuth.getInstance().signOut();
+                        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
                         databaseReference.removeEventListener(channelListener);
                         databaseReference.onDisconnect();
                         inbox = null;
-                        currentUser = null;
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
@@ -257,10 +243,15 @@ public class PlayActivity
     @Override
     public boolean onKey(View v, int keyCode, KeyEvent event) {
         if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
-            databaseReference.child(CHS + "/" + currentChannel)
-                    .push()
-                    .setValue(new Message(messageText.getText().toString(), currentUser.getDisplayName()));
-            return true;
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser != null) {
+                FirebaseDatabase.getInstance().getReference().child(CHS + "/" + currentChannel)
+                        .push()
+                        .setValue(new Message(messageText.getText().toString(), currentUser.getDisplayName()));
+                return true;
+            } else {
+                return false;
+            }
         }
         return false;
     }
@@ -276,6 +267,7 @@ public class PlayActivity
     }
 
     private void updateUI() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
             findViewById(R.id.sign_in_button).setVisibility(View.GONE);
             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
@@ -326,6 +318,7 @@ public class PlayActivity
         fbLog.log(inbox, msg);
 
         // Switching a listener to the selected channel.
+        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
         databaseReference.child(CHS + "/" + currentChannel).removeEventListener(channelListener);
         currentChannel = channel;
         databaseReference.child(CHS + "/" + currentChannel).addChildEventListener(channelListener);
@@ -346,9 +339,9 @@ public class PlayActivity
         currentChannel = savedInstanceState.getString(CURRENT_CHANNEL_KEY);
         inbox = savedInstanceState.getString(INBOX_KEY);
         firebaseLoggerPath = savedInstanceState.getString(FIREBASE_LOGGER_PATH_KEY);
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser != null) {
-            databaseReference = FirebaseDatabase.getInstance().getReference();
-            fbLog = new FirebaseLogger(databaseReference, firebaseLoggerPath);
+            fbLog = new FirebaseLogger(firebaseLoggerPath);
             updateUI();
         }
         super.onRestoreInstanceState(savedInstanceState);
@@ -362,12 +355,12 @@ public class PlayActivity
      * Request that a servlet instance be assigned.
      */
     private void requestLogger(final LoggerListener loggerListener) {
-        databaseReference = FirebaseDatabase.getInstance().getReference();
+        final DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
         databaseReference.child(IBX + "/" + inbox).addListenerForSingleValueEvent(new ValueEventListener() {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists() && snapshot.getValue(String.class) != null) {
                     firebaseLoggerPath = IBX + "/" + snapshot.getValue(String.class) + "/logs";
-                    fbLog = new FirebaseLogger(databaseReference, firebaseLoggerPath);
+                    fbLog = new FirebaseLogger(firebaseLoggerPath);
                     databaseReference.child(IBX + "/" + inbox).removeEventListener(this);
                     loggerListener.onLoggerAssigned();
                 }
