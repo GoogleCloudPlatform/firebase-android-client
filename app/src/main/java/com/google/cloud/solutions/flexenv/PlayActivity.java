@@ -364,8 +364,7 @@ public class PlayActivity
      */
     private void requestLogger(final LoggerListener loggerListener) {
         databaseReference = FirebaseDatabase.getInstance().getReference();
-        databaseReference.child(IBX + "/" + inbox).removeValue();
-        databaseReference.child(IBX + "/" + inbox).addValueEventListener(new ValueEventListener() {
+        databaseReference.child(IBX + "/" + inbox).addListenerForSingleValueEvent(new ValueEventListener() {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists() && snapshot.getValue(String.class) != null) {
                     firebaseLoggerPath = IBX + "/" + snapshot.getValue(String.class) + "/logs";
