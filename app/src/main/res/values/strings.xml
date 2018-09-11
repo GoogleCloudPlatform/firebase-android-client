@@ -9,7 +9,13 @@
     <string name="channel_label">Select a channel from menu</string>
     <string name="message_hint">Enter a message</string>
 
-    <string name="channels">books,game,music,sports,travel</string>
+    <string-array name="channels">
+        <item>books</item>
+        <item>game</item>
+        <item>music</item>
+        <item>sports</item>
+        <item>travel</item>
+    </string-array>
 
     <!-- nav_header_play -->
     <string name="nav_header_play_icon">Android icon with pattern background</string>

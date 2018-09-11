@@ -1,17 +1,17 @@
-/**
- # Copyright 2016 Google LLC.
- # Licensed under the Apache License, Version 2.0 (the "License");
- # you may not use this file except in compliance with the License.
- # You may obtain a copy of the License at
- #
- # http://www.apache.org/licenses/LICENSE-2.0
- #
- # Unless required by applicable law or agreed to in writing, software
- # distributed under the License is distributed on an "AS IS" BASIS,
- # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- # See the License for the specific language governing permissions and
- # limitations under the License.
- **/
+/*
+ * Copyright 2016 Google LLC.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package com.google.cloud.solutions.flexenv;
 
@@ -60,6 +60,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -86,12 +87,13 @@ public class PlayActivity
     private static final int RC_SIGN_IN = 9001;
 
     private static final String TAG = "PlayActivity";
+    private static final String CURRENT_CHANNEL_KEY = "CURRENT_CHANNEL_KEY";
+    private static final String INBOX_KEY = "INBOX_KEY";
+    private static final String FIREBASE_LOGGER_PATH_KEY = "FIREBASE_LOGGER_PATH_KEY";
     private static FirebaseLogger fbLog;
 
     private GoogleApiClient mGoogleApiClient;
-    private FirebaseUser user;
-    private DatabaseReference databaseReference;
-    private FirebaseAuth.AuthStateListener authListener;
+    private String firebaseLoggerPath;
     private String inbox;
     private String currentChannel;
     private ChildEventListener channelListener;
@@ -123,7 +125,7 @@ public class PlayActivity
         NavigationView navigationView = findViewById(R.id.nav_view);
         channelMenu = navigationView.getMenu();
         navigationView.setNavigationItemSelectedListener(this);
-        initChannels(getResources().getString(R.string.channels));
+        initChannels();
 
         GoogleSignInOptions gso =
                 new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -134,29 +136,6 @@ public class PlayActivity
                 .enableAutoManage(this, this)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
                 .build();
-        authListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                user = firebaseAuth.getCurrentUser();
-                if (user != null) {
-                    inbox = "client-" + Integer.toString(Math.abs(user.getUid().hashCode()));
-                    requestLogger(new LoggerListener() {
-                        @Override
-                        public void onLoggerAssigned() {
-                            Log.d(TAG, "onAuthStateChanged:signed_in:" + inbox);
-                            status.setText(String.format(getResources().getString(R.string.signed_in_label),
-                                    user.getDisplayName())
-                            );
-                            fbLog.log(inbox, "Signed in");
-                            updateUI(true);
-                        }
-                    });
-                } else {
-                    Log.d(TAG, "onAuthStateChanged:signed_out");
-                    updateUI(false);
-                }
-            }
-        };
 
         SignInButton signInButton = findViewById(R.id.sign_in_button);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
@@ -185,28 +164,13 @@ public class PlayActivity
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
-        FirebaseAuth.getInstance().addAuthStateListener(authListener);
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        if (authListener != null) {
-            FirebaseAuth.getInstance().removeAuthStateListener(authListener);
-        }
-    }
-
-    @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == RC_SIGN_IN) {
             GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
-            Log.d(TAG, "SignInResult : " + result.isSuccess());
+            Log.d(TAG, "Google authentication status: " + result.getStatus().getStatusMessage());
             // If Google ID authentication is successful, obtain a token for Firebase authentication.
             if (result.isSuccess() && result.getSignInAccount() != null) {
-                user = FirebaseAuth.getInstance().getCurrentUser();
                 status.setText(getResources().getString(R.string.authenticating_label));
                 AuthCredential credential = GoogleAuthProvider.getCredential(
                         result.getSignInAccount().getIdToken(), null);
@@ -214,9 +178,24 @@ public class PlayActivity
                         .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                             @Override
                             public void onComplete(@NonNull Task<AuthResult> task) {
-                                Log.d(TAG, "signInWithCredential:onComplete:" + task.isSuccessful());
-                                if (!task.isSuccessful()) {
-                                    Log.w(TAG, "signInWithCredential", task.getException());
+                                Log.d(TAG, "signInWithCredential:onComplete Successful: " + task.isSuccessful());
+                                if (task.isSuccessful()) {
+                                    final FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                                    if (currentUser != null) {
+                                        inbox = "client-" + Integer.toString(Math.abs(currentUser.getUid().hashCode()));
+                                        requestLogger(new LoggerListener() {
+                                            @Override
+                                            public void onLoggerAssigned() {
+                                                Log.d(TAG, "onLoggerAssigned logger id: " + inbox);
+                                                fbLog.log(inbox, "Signed in");
+                                                updateUI();
+                                            }
+                                        });
+                                    } else {
+                                        updateUI();
+                                    }
+                                } else {
+                                    Log.w(TAG, "signInWithCredential:onComplete", task.getException());
                                     status.setText(String.format(
                                             getResources().getString(R.string.authentication_failed),
                                             task.getException())
@@ -225,7 +204,7 @@ public class PlayActivity
                             }
                         });
             } else {
-                updateUI(false);
+                updateUI();
             }
         }
     }
@@ -242,14 +221,15 @@ public class PlayActivity
                 new ResultCallback<Status>() {
                     @Override
                     public void onResult(@NonNull Status status) {
+                        FirebaseAuth.getInstance().signOut();
+                        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
                         databaseReference.removeEventListener(channelListener);
                         databaseReference.onDisconnect();
                         inbox = null;
-                        user = null;
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                updateUI(false);
+                                updateUI();
                             }
                         });
                         fbLog.log(inbox, "Signed out");
@@ -260,10 +240,15 @@ public class PlayActivity
     @Override
     public boolean onKey(View v, int keyCode, KeyEvent event) {
         if ((event.getAction() == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
-            databaseReference.child(CHS + "/" + currentChannel)
-                    .push()
-                    .setValue(new Message(messageText.getText().toString(), user.getDisplayName()));
-            return true;
+            FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser != null) {
+                FirebaseDatabase.getInstance().getReference().child(CHS + "/" + currentChannel)
+                        .push()
+                        .setValue(new Message(messageText.getText().toString(), currentUser.getDisplayName()));
+                return true;
+            } else {
+                return false;
+            }
         }
         return false;
     }
@@ -278,20 +263,32 @@ public class PlayActivity
         messageText.setText("");
     }
 
-    private void updateUI(boolean signedIn) {
-        if (signedIn) {
+    private void updateUI() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
             findViewById(R.id.sign_in_button).setVisibility(View.GONE);
             findViewById(R.id.sign_out_button).setVisibility(View.VISIBLE);
             findViewById(R.id.channelLabel).setVisibility(View.VISIBLE);
             findViewById(R.id.messageText).setVisibility(View.VISIBLE);
             findViewById(R.id.messageHistory).setVisibility(View.VISIBLE);
+
+            status.setText(
+                    String.format(getResources().getString(R.string.signed_in_label),
+                    currentUser.getDisplayName())
+            );
+            findViewById(R.id.status).setVisibility(View.VISIBLE);
+
+            // Select the first channel in the array if there's no channel selected
+            switchChannel(currentChannel != null ? currentChannel :
+                    getResources().getStringArray(R.array.channels)[0]);
         }
         else {
             findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
             findViewById(R.id.sign_out_button).setVisibility(View.GONE);
-            findViewById(R.id.channelLabel).setVisibility(View.INVISIBLE);
-            findViewById(R.id.messageText).setVisibility(View.INVISIBLE);
-            findViewById(R.id.messageHistory).setVisibility(View.INVISIBLE);
+            findViewById(R.id.channelLabel).setVisibility(View.GONE);
+            findViewById(R.id.messageText).setVisibility(View.GONE);
+            findViewById(R.id.messageHistory).setVisibility(View.GONE);
+            findViewById(R.id.status).setVisibility(View.GONE);
             ((TextView)findViewById(R.id.status)).setText("");
         }
     }
@@ -310,24 +307,46 @@ public class PlayActivity
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
+
+        switchChannel(item.toString());
+
+        return true;
+    }
+
+    private void switchChannel(String channel) {
         messages.clear();
 
-        String msg = "Switching channel to '" + item.toString() + "'";
-        try {
-            fbLog.log(inbox, msg);
-        } catch(NullPointerException e) {
-            updateUI(false);
-            return false;
-        }
+        String msg = "Switching channel to '" + channel + "'";
+        fbLog.log(inbox, msg);
 
         // Switching a listener to the selected channel.
+        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
         databaseReference.child(CHS + "/" + currentChannel).removeEventListener(channelListener);
-        currentChannel = item.toString();
+        currentChannel = channel;
         databaseReference.child(CHS + "/" + currentChannel).addChildEventListener(channelListener);
 
         channelLabel.setText(currentChannel);
+    }
 
-        return true;
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putString(CURRENT_CHANNEL_KEY, currentChannel);
+        outState.putString(INBOX_KEY, inbox);
+        outState.putString(FIREBASE_LOGGER_PATH_KEY, firebaseLoggerPath);
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        currentChannel = savedInstanceState.getString(CURRENT_CHANNEL_KEY);
+        inbox = savedInstanceState.getString(INBOX_KEY);
+        firebaseLoggerPath = savedInstanceState.getString(FIREBASE_LOGGER_PATH_KEY);
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            fbLog = new FirebaseLogger(firebaseLoggerPath);
+            updateUI();
+        }
+        super.onRestoreInstanceState(savedInstanceState);
     }
 
     @Override
@@ -338,15 +357,12 @@ public class PlayActivity
      * Request that a servlet instance be assigned.
      */
     private void requestLogger(final LoggerListener loggerListener) {
-        databaseReference = FirebaseDatabase.getInstance().getReference();
-        databaseReference.child(IBX + "/" + inbox).removeValue();
-        databaseReference.child(IBX + "/" + inbox).addValueEventListener(new ValueEventListener() {
+        final DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+        databaseReference.child(IBX + "/" + inbox).addListenerForSingleValueEvent(new ValueEventListener() {
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists() && snapshot.getValue(String.class) != null) {
-                    fbLog = new FirebaseLogger(
-                            databaseReference,
-                            IBX + "/" + snapshot.getValue(String.class) + "/logs"
-                    );
+                    firebaseLoggerPath = IBX + "/" + snapshot.getValue(String.class) + "/logs";
+                    fbLog = new FirebaseLogger(firebaseLoggerPath);
                     databaseReference.child(IBX + "/" + inbox).removeEventListener(this);
                     loggerListener.onLoggerAssigned();
                 }
@@ -366,10 +382,10 @@ public class PlayActivity
      * Once a channel is selected, ChildEventListener is attached and
      * waits for messages.
      */
-    private void initChannels(String channelString) {
-        Log.d(TAG, "Channels : " + channelString);
-        String[] topicArr = channelString.split(",");
-        for (String topic : topicArr) {
+    private void initChannels() {
+        String[] channelArray = getResources().getStringArray(R.array.channels);
+        Log.d(TAG, "Channels : " + Arrays.toString(channelArray));
+        for (String topic : channelArray) {
             channelMenu.add(topic);
         }
 

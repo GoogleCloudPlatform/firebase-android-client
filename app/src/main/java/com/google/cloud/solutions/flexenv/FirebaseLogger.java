@@ -1,4 +1,4 @@
-/**
+/*
  # Copyright 2016 Google LLC.
  # Licensed under the Apache License, Version 2.0 (the "License");
  # you may not use this file except in compliance with the License.
@@ -11,24 +11,26 @@
  # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  # See the License for the specific language governing permissions and
  # limitations under the License.
- **/
+ */
 
 package com.google.cloud.solutions.flexenv;
 
 // [START FirebaseLogger]
-import com.google.firebase.database.DatabaseReference;
+
 import com.google.cloud.solutions.flexenv.common.LogEntry;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 /*
  * FirebaseLogger pushes user event logs to a specified path.
- * A backend Servlet instance listens to
+ * A backend servlet instance listens to
  * the same key and keeps track of event logs.
  */
 class FirebaseLogger {
     private final DatabaseReference logRef;
 
-    FirebaseLogger(DatabaseReference firebase, String path) {
-        logRef = firebase.child(path);
+    FirebaseLogger(String path) {
+        logRef = FirebaseDatabase.getInstance().getReference().child(path);
     }
 
     public void log(String tag, String message) {
