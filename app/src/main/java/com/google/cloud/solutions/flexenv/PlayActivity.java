@@ -16,6 +16,8 @@
 package com.google.cloud.solutions.flexenv;
 
 import android.content.Intent;
+import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
@@ -29,11 +31,14 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.auth.api.Auth;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
@@ -41,13 +46,16 @@ import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.ResultCallback;
-import com.google.android.gms.common.api.Status;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.cloud.solutions.flexenv.common.Message;
+import com.google.android.gms.common.api.Scope;
+import com.google.cloud.solutions.flexenv.common.Base64EncodingHelper;
+import com.google.cloud.solutions.flexenv.common.BaseMessage;
+import com.google.cloud.solutions.flexenv.common.GcsDownloadHelper;
+import com.google.cloud.solutions.flexenv.common.RecordingHelper;
+import com.google.cloud.solutions.flexenv.common.SpeechMessage;
+import com.google.cloud.solutions.flexenv.common.SpeechTranslationHelper;
+import com.google.cloud.solutions.flexenv.common.TextMessage;
+import com.google.cloud.solutions.flexenv.common.Translation;
 import com.google.firebase.auth.AuthCredential;
-import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
@@ -58,6 +66,11 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,6 +89,7 @@ public class PlayActivity
         extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
         GoogleApiClient.OnConnectionFailedListener,
+        AdapterView.OnItemClickListener,
         View.OnKeyListener,
         View.OnClickListener {
 
@@ -127,11 +141,18 @@ public class PlayActivity
         navigationView.setNavigationItemSelectedListener(this);
         initChannels();
 
-        GoogleSignInOptions gso =
+        GoogleSignInOptions.Builder gsoBuilder =
                 new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken(getString(R.string.default_web_client_id))
-                .requestEmail()
-                .build();
+                        .requestIdToken(getString(R.string.default_web_client_id))
+                        .requestEmail();
+
+        if(speechTranslationEnabled()) {
+            Scope gcsScope = new Scope(
+                    getApplicationContext().getString(R.string.speechToSpeechOAuth2Scope));
+            gsoBuilder = gsoBuilder.requestScopes(gcsScope);
+        }
+
+        GoogleSignInOptions gso = gsoBuilder.build();
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .enableAutoManage(this, this)
                 .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
@@ -139,22 +160,21 @@ public class PlayActivity
 
         SignInButton signInButton = findViewById(R.id.sign_in_button);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
-        signInButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
-                // Start authenticating with Google ID first.
-                startActivityForResult(signInIntent, RC_SIGN_IN);
-            }
-        });
+        signInButton.setOnClickListener(this);
         channelLabel = findViewById(R.id.channelLabel);
         Button signOutButton = findViewById(R.id.sign_out_button);
         signOutButton.setOnClickListener(this);
 
+        ImageButton microphoneButton = findViewById(R.id.microphone_button);
+        microphoneButton.setOnClickListener(this);
+
         messages = new ArrayList<>();
         messageAdapter = new SimpleAdapter(this, messages, android.R.layout.simple_list_item_2,
-                new String[]{"message", "meta"}, new int[]{android.R.id.text1, android.R.id.text2});
+                new String[]{"message", "meta"},
+                new int[]{android.R.id.text1, android.R.id.text2});
+
         messageHistory = findViewById(R.id.messageHistory);
+        messageHistory.setOnItemClickListener(this);
         messageHistory.setAdapter(messageAdapter);
         messageText = findViewById(R.id.messageText);
         messageText.setOnKeyListener(this);
@@ -175,32 +195,26 @@ public class PlayActivity
                 AuthCredential credential = GoogleAuthProvider.getCredential(
                         result.getSignInAccount().getIdToken(), null);
                 FirebaseAuth.getInstance().signInWithCredential(credential)
-                        .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                            @Override
-                            public void onComplete(@NonNull Task<AuthResult> task) {
-                                Log.d(TAG, "signInWithCredential:onComplete Successful: " + task.isSuccessful());
-                                if (task.isSuccessful()) {
-                                    final FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-                                    if (currentUser != null) {
-                                        inbox = "client-" + Integer.toString(Math.abs(currentUser.getUid().hashCode()));
-                                        requestLogger(new LoggerListener() {
-                                            @Override
-                                            public void onLoggerAssigned() {
-                                                Log.d(TAG, "onLoggerAssigned logger id: " + inbox);
-                                                fbLog.log(inbox, "Signed in");
-                                                updateUI();
-                                            }
-                                        });
-                                    } else {
+                        .addOnCompleteListener(this, task -> {
+                            Log.d(TAG, "signInWithCredential:onComplete Successful: " + task.isSuccessful());
+                            if (task.isSuccessful()) {
+                                final FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                                if (currentUser != null) {
+                                    inbox = "client-" + Integer.toString(Math.abs(currentUser.getUid().hashCode()));
+                                    requestLogger(() -> {
+                                        Log.d(TAG, "onLoggerAssigned logger id: " + inbox);
+                                        fbLog.log(inbox, "Signed in");
                                         updateUI();
-                                    }
+                                    });
                                 } else {
-                                    Log.w(TAG, "signInWithCredential:onComplete", task.getException());
-                                    status.setText(String.format(
-                                            getResources().getString(R.string.authentication_failed),
-                                            task.getException())
-                                    );
+                                    updateUI();
                                 }
+                            } else {
+                                Log.w(TAG, "signInWithCredential:onComplete", task.getException());
+                                status.setText(String.format(
+                                        getResources().getString(R.string.authentication_failed),
+                                        task.getException())
+                                );
                             }
                         });
             } else {
@@ -211,29 +225,71 @@ public class PlayActivity
 
     @Override
     public void onClick(View v) {
-        if (v.getId() == R.id.sign_out_button) {
-            signOut();
+        switch (v.getId()) {
+            case R.id.sign_out_button:
+                signOut();
+                break;
+            case R.id.sign_in_button:
+                Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
+                // Start authenticating with Google ID first.
+                startActivityForResult(signInIntent, RC_SIGN_IN);
+                break;
+            case R.id.microphone_button:
+                translateAudioMessage(v);
+                break;
+        }
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        if (parent.getAdapter().getItem(position) instanceof Map) {
+            Map map = (Map) parent.getAdapter().getItem(position);
+            if (map.containsKey("gcsBucket") && map.containsKey("gcsPath")) {
+                String gcsBucket = map.get("gcsBucket").toString();
+                String gcsPath = map.get("gcsPath").toString();
+                playMessage(gcsBucket, gcsPath);
+            }
+        }
+    }
+
+    private void playMessage(String gcsBucket, String gcsPath) {
+        String filePath = gcsBucket + "/" + gcsPath;
+        File file = new File(getFilesDir(), filePath);
+
+        if(file.exists()) {
+            MediaPlayer mediaPlayer = MediaPlayer.create(
+                    getApplicationContext(), Uri.fromFile(file));
+            mediaPlayer.start();
+        } else {
+            GcsDownloadHelper.getInstance().downloadGcsFile(
+                    getApplicationContext(), gcsBucket, gcsPath, new GcsDownloadHelper.GcsDownloadListener() {
+                        @Override
+                        public void onDownloadSucceeded(File file) {
+                            MediaPlayer mediaPlayer = MediaPlayer.create(
+                                    getApplicationContext(), Uri.fromFile(file));
+                            mediaPlayer.start();
+                        }
+
+                        @Override
+                        public void onDownloadFailed(Exception e) {
+                            showErrorToast(e);
+                            Log.e(TAG, e.getLocalizedMessage());
+                        }
+                    }
+            );
         }
     }
 
     private void signOut() {
         Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
-                new ResultCallback<Status>() {
-                    @Override
-                    public void onResult(@NonNull Status status) {
-                        FirebaseAuth.getInstance().signOut();
-                        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
-                        databaseReference.removeEventListener(channelListener);
-                        databaseReference.onDisconnect();
-                        inbox = null;
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                updateUI();
-                            }
-                        });
-                        fbLog.log(inbox, "Signed out");
-                    }
+                status -> {
+                    FirebaseAuth.getInstance().signOut();
+                    DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+                    databaseReference.removeEventListener(channelListener);
+                    databaseReference.onDisconnect();
+                    inbox = null;
+                    runOnUiThread(PlayActivity.this::updateUI);
+                    fbLog.log(inbox, "Signed out");
                 });
     }
 
@@ -244,7 +300,7 @@ public class PlayActivity
             if (currentUser != null) {
                 FirebaseDatabase.getInstance().getReference().child(CHS + "/" + currentChannel)
                         .push()
-                        .setValue(new Message(messageText.getText().toString(), currentUser.getDisplayName()));
+                        .setValue(new TextMessage(messageText.getText().toString(), currentUser.getDisplayName(), BaseMessage.MESSAGE_TYPE_TEXT));
                 return true;
             } else {
                 return false;
@@ -262,6 +318,81 @@ public class PlayActivity
         messageAdapter.notifyDataSetChanged();
         messageText.setText("");
     }
+    private void addMessage(String msgString, String meta, String gcsBucket, String gcsPath) {
+        Map<String, String> message = new HashMap<>();
+        // 🔈 Prepend a speaker emoji to text.
+        message.put("message", "\uD83D\uDD08" + msgString);
+        message.put("meta", meta);
+        message.put("gcsBucket", gcsBucket);
+        message.put("gcsPath", gcsPath);
+        messages.add(message);
+
+        messageAdapter.notifyDataSetChanged();
+    }
+
+    private void translateAudioMessage(View v) {
+        ImageButton microphoneButton = (ImageButton)v;
+        if (RecordingHelper.getInstance().hasRequiredPermissions(getApplicationContext())) {
+            if (!RecordingHelper.getInstance().isRecording()) {
+                RecordingHelper.getInstance().startRecording(new RecordingHelper.RecordingListener() {
+                    @Override
+                    public void onRecordingSucceeded(File output) {
+                        String base64EncodedAudioMessage;
+                        try {
+                            base64EncodedAudioMessage = Base64EncodingHelper.encode(output);
+                            SpeechTranslationHelper.getInstance().translateAudioMessage(
+                                    getApplicationContext(),
+                                    base64EncodedAudioMessage,
+                                    16000,
+                                    new SpeechTranslationHelper.SpeechTranslationListener() {
+                                        @Override
+                                        public void onTranslationSucceeded(String responseBody) {
+                                            Log.i(TAG, responseBody);
+                                            try {
+                                                final FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                                                if(currentUser != null) {
+                                                    SpeechMessage speechMessage = new SpeechMessage(
+                                                            new JSONObject(responseBody),
+                                                            currentUser.getDisplayName(),
+                                                            BaseMessage.MESSAGE_TYPE_SPEECH
+                                                            );
+                                                    FirebaseDatabase.getInstance().getReference().child(CHS + "/" + currentChannel)
+                                                            .push()
+                                                            .setValue(speechMessage);
+                                                }
+                                            } catch (JSONException e) {
+                                                showErrorToast(e);
+                                                Log.e(TAG, e.getLocalizedMessage());
+                                            }
+                                            microphoneButton.setImageDrawable(getDrawable(R.drawable.ic_baseline_mic_none_24px));
+                                        }
+
+                                        @Override
+                                        public void onTranslationFailed(Exception e) {
+                                            showErrorToast(e);
+                                            Log.e(TAG, e.getLocalizedMessage());
+                                        }
+                                    });
+                        } catch (IOException e) {
+                            showErrorToast(e);
+                            Log.e(TAG, e.getLocalizedMessage());
+                        }
+                    }
+
+                    @Override
+                    public void onRecordingFailed(Exception e) {
+                        showErrorToast(e);
+                        Log.e(TAG, e.getLocalizedMessage());
+                    }
+                });
+                microphoneButton.setImageDrawable(getDrawable(R.drawable.ic_baseline_mic_24px));
+            } else {
+                RecordingHelper.getInstance().stopRecording();
+            }
+        } else {
+            RecordingHelper.getInstance().requestRequiredPermissions(this);
+        }
+    }
 
     private void updateUI() {
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -271,6 +402,10 @@ public class PlayActivity
             findViewById(R.id.channelLabel).setVisibility(View.VISIBLE);
             findViewById(R.id.messageText).setVisibility(View.VISIBLE);
             findViewById(R.id.messageHistory).setVisibility(View.VISIBLE);
+
+            if(speechTranslationEnabled()) {
+                findViewById(R.id.microphone_button).setVisibility(View.VISIBLE);
+            }
 
             status.setText(
                     String.format(getResources().getString(R.string.signed_in_label),
@@ -287,6 +422,7 @@ public class PlayActivity
             findViewById(R.id.sign_out_button).setVisibility(View.GONE);
             findViewById(R.id.channelLabel).setVisibility(View.GONE);
             findViewById(R.id.messageText).setVisibility(View.GONE);
+            findViewById(R.id.microphone_button).setVisibility(View.GONE);
             findViewById(R.id.messageHistory).setVisibility(View.GONE);
             findViewById(R.id.status).setVisibility(View.GONE);
             ((TextView)findViewById(R.id.status)).setText("");
@@ -392,11 +528,30 @@ public class PlayActivity
         channelListener = new ChildEventListener() {
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, String prevKey) {
-                Message message = snapshot.getValue(Message.class);
-                // Extract attributes from Message object to display on the screen.
-                if(message != null && !message.getText().isEmpty()) {
-                    addMessage(message.getText(), fmt.format(new Date(message.getTimeLong())) + " "
-                            + message.getDisplayName());
+                if(snapshot.hasChild("/messageType")) {
+                    String messageType = snapshot.child("/messageType").getValue(String.class);
+                    if(messageType != null) {
+                        // Extract attributes from appropriate message object to display on the screen.
+                        if (messageType.equals(BaseMessage.MESSAGE_TYPE_TEXT)) {
+                            TextMessage message = snapshot.getValue(TextMessage.class);
+                            if(message != null) {
+                                addMessage(message.getText(),fmt.format(new Date(message.getTimeLong())) + " "
+                                        + message.getDisplayName());
+                            }
+                        } else if (messageType.equals(BaseMessage.MESSAGE_TYPE_SPEECH)) {
+                            SpeechMessage message = snapshot.getValue(SpeechMessage.class);
+                            String language = getApplicationContext()
+                                    .getResources()
+                                    .getConfiguration()
+                                    .getLocales()
+                                    .get(0).getLanguage();
+                            if(message != null) {
+                                Translation translation = message.getTranslation(language);
+                                addMessage(translation.getText(), fmt.format(new Date(message.getTimeLong())) + " "
+                                        + message.getDisplayName(), message.getGcsBucket(), translation.getGcsPath());
+                            }
+                        }
+                    }
                 }
             }
 
@@ -414,6 +569,20 @@ public class PlayActivity
             @Override
             public void onChildMoved(@NonNull DataSnapshot snapshot, String prevKey) {}
         };
+    }
+
+    private boolean speechTranslationEnabled() {
+        String speechEndpoint = getString(R.string.speechToSpeechEndpoint);
+        return !speechEndpoint.contains("YOUR-PROJECT-ID");
+    }
+
+    private void showErrorToast(Exception e) {
+        runOnUiThread(
+                () -> Toast.makeText(
+                        getApplicationContext(),
+                        e.getLocalizedMessage(),
+                        Toast.LENGTH_LONG).show()
+        );
     }
 
     /**

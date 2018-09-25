@@ -25,16 +25,32 @@ if [ ! -d ${HOME}/android-sdk ]; then
 fi
 
 export ANDROID_HOME="${HOME}/android-sdk"
-# Install Android SDK, tools, and build tools API 26
-echo "y" | ${ANDROID_HOME}/tools/bin/sdkmanager "platforms;android-27" "tools" "build-tools;27.0.3"
+# Install Android SDK, tools, and build tools API 27, system image, and emulator
+echo "y" | ${ANDROID_HOME}/tools/bin/sdkmanager \
+    "platforms;android-27" "tools" "platform-tools" "build-tools;27.0.3" \
+    "system-images;android-27;default;x86_64" "emulator"
 
 export PATH=${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${PATH}
 
+# Save starting directory. The script needs it later.
+cwd=$(pwd)
+
+env
+
+echo "Move to the tools/bin directory…"
+cd ${ANDROID_HOME}/tools/bin
+echo "no" | ./avdmanager create avd -n test -k "system-images;android-27;default;x86_64"
+echo ""
+echo "Start the emulator…"
+cd ..
+emulator -avd test -no-audio -no-window &
+adb wait-for-device
+
 echo "Move to the root directory of the repo…"
-cd github/firebase-android-client
+cd ${cwd}/github/firebase-android-client
 
 # Copy the Google services configuration file
 cp ${KOKORO_GFILE_DIR}/google-services.json app/google-services.json
 
 echo "Run tests and build APK file…"
-./gradlew clean check build
+./gradlew clean check build connectedAndroidTest

@@ -37,4 +37,4 @@ cd github/firebase-android-client
 cp ${KOKORO_GFILE_DIR}/google-services.json app/google-services.json
 
 echo "Run tests and build APK file…"
-./gradlew clean check build
+./gradlew clean check build connectedAndroidTest

@@ -25,4 +25,5 @@
     <string name="signed_in_label">Signed in as %s</string>
     <string name="authenticating_label">Authenticating with Firebase…</string>
     <string name="authentication_failed">Firebase authentication failed: %s</string>
+    <string name="mic_button_content_descriptor">Microphone button</string>
 </resources>
