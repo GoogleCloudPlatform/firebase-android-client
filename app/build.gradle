@@ -3,7 +3,7 @@ apply plugin: 'com.google.gms.google-services'
 
 android {
     compileSdkVersion 27
-    buildToolsVersion "27.0.3"
+    buildToolsVersion '28.0.2'
 
     defaultConfig {
         applicationId "com.google.cloud.solutions.flexenv"
@@ -32,11 +32,11 @@ dependencies {
     implementation 'com.android.support:appcompat-v7:27.1.1'
     implementation 'com.android.support:design:27.1.1'
     implementation 'com.android.support:multidex:1.0.3'
-    implementation 'com.google.android.gms:play-services-auth:15.0.1'
-    implementation 'com.google.firebase:firebase-core:16.0.1'
-    implementation 'com.google.firebase:firebase-auth:16.0.2'
-    implementation 'com.google.firebase:firebase-database:16.0.1'
-    implementation 'com.google.firebase:firebase-invites:16.0.1'
+    implementation 'com.google.android.gms:play-services-auth:16.0.0'
+    implementation 'com.google.firebase:firebase-core:16.0.3'
+    implementation 'com.google.firebase:firebase-auth:16.0.3'
+    implementation 'com.google.firebase:firebase-database:16.0.2'
+    implementation 'com.google.firebase:firebase-invites:16.0.3'
     implementation 'com.fasterxml.jackson.core:jackson-core:2.7.2'
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.7.2'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.7.2'
