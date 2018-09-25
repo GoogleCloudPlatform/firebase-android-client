@@ -16,7 +16,12 @@
 package com.google.cloud.solutions.flexenv.common;
 
 import android.content.Context;
+import android.util.Log;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.BufferedReader;
@@ -25,54 +30,94 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 
 import androidx.test.filters.LargeTest;
-import androidx.test.filters.Suppress;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 @LargeTest
 public class SpeechTranslationHelperAndroidTest {
+    private static final String TAG = "SpeechTranslationHelperAndroidTest";
+    private static String base64EncodedAudioMessage;
 
-    @Suppress
-    @Test
-    public void translateAudioMessage_Success() throws IOException, InterruptedException {
-        final Object waiter = new Object();
-
+    @Before
+    public void readSpeechRecording16khzb64File() throws IOException {
         String file = "assets/speech-recording-16khz.b64";
         InputStream in = this.getClass().getClassLoader().getResourceAsStream(file);
         InputStreamReader inputStreamReader = new InputStreamReader(in);
         BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
 
-        StringBuilder base64EncodedAudioMessage = new StringBuilder();
+        StringBuilder stringBuilder = new StringBuilder();
 
         String line;
         while((line = bufferedReader.readLine()) != null) {
-            base64EncodedAudioMessage.append(line);
+            stringBuilder.append(line);
         }
+        base64EncodedAudioMessage = stringBuilder.toString();
+    }
+
+    @Test
+    public void translateAudioMessage_Success() throws InterruptedException {
+        final Object waiter = new Object();
 
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
         synchronized (waiter) {
             SpeechTranslationHelper.getInstance()
-                    .translateAudioMessage(context, base64EncodedAudioMessage.toString(),
+                    .translateAudioMessage(context, base64EncodedAudioMessage,
                     16000, new SpeechTranslationHelper.SpeechTranslationListener() {
                         @Override
                         public void onTranslationSucceeded(String responseBody) {
-                            assertTrue(true);
-                            synchronized (waiter) {
-                                waiter.notify();
+                            try {
+                                Log.i(TAG, responseBody);
+                                JSONObject response = new JSONObject(responseBody);
+                                assertTrue(response.has("transcription"));
+                            } catch (JSONException e) {
+                                Assert.fail();
+                            } finally {
+                                synchronized (waiter) {
+                                    waiter.notify();
+                                }
                             }
                         }
 
                         @Override
                         public void onTranslationFailed(Exception e) {
-                            fail();
+                            Assert.fail();
                             synchronized (waiter) {
                                 waiter.notify();
                             }
                         }
                     });
+
+            synchronized (waiter) {
+                waiter.wait();
+            }
+        }
+    }
+
+    @Test
+    public void translateAudioMessage_Wrong_SampleRate() throws InterruptedException {
+        final Object waiter = new Object();
+
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+
+        synchronized (waiter) {
+            SpeechTranslationHelper.getInstance()
+                    .translateAudioMessage(context, base64EncodedAudioMessage,
+                            24000, new SpeechTranslationHelper.SpeechTranslationListener() {
+                                @Override
+                                public void onTranslationSucceeded(String responseBody) {
+                                    Assert.fail();
+                                }
+
+                                @Override
+                                public void onTranslationFailed(Exception e) {
+                                    Assert.assertTrue(e.getMessage().contains("INVALID_ARGUMENT: sample_rate_hertz"));
+                                    synchronized (waiter) {
+                                        waiter.notify();
+                                    }
+                                }
+                            });
 
             synchronized (waiter) {
                 waiter.wait();
