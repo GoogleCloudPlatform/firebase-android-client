@@ -112,9 +112,10 @@ public class SpeechTranslationHelper {
                     @Override
                     public void onReadCompleted(UrlRequest request, UrlResponseInfo info, ByteBuffer byteBuffer) {
                         Log.i(TAG, "onReadCompleted method called.");
-                        request.read(ByteBuffer.allocateDirect((int)info.getReceivedByteCount()));
                         byteBuffer.flip();
                         responseBodyBuilder.append(Charset.forName("UTF-8").decode(byteBuffer).toString());
+                        byteBuffer.clear();
+                        request.read(byteBuffer);
                     }
                     @Override
                     public void onSucceeded(UrlRequest request, UrlResponseInfo info) {
