@@ -64,8 +64,8 @@ public class SpeechTranslationHelper {
      * @param sampleRateInHertz The sample rate in hertz
      * @param translationListener The callback to deliver the results to.
      */
-    public void translateAudioMessage(Context context, String base64EncodedAudioMessage,
-                                      int sampleRateInHertz,
+    public void translateAudioMessage(Context context, CronetEngine cronetEngine,
+                                      String base64EncodedAudioMessage, int sampleRateInHertz,
                                       SpeechTranslationListener translationListener) {
         JSONObject requestBody = new JSONObject();
         try {
@@ -79,13 +79,13 @@ public class SpeechTranslationHelper {
         }
 
         byte[] requestBodyBytes = requestBody.toString().getBytes();
-        UrlRequest request = buildSpeechTranslationRequest(context, requestBodyBytes, translationListener);
+        UrlRequest request = buildSpeechTranslationRequest(context, cronetEngine, requestBodyBytes, translationListener);
         request.start();
     }
 
-    private UrlRequest buildSpeechTranslationRequest(Context context, byte[] requestBody, SpeechTranslationListener translationListener) {
-        CronetEngine.Builder myBuilder = new CronetEngine.Builder(context);
-        CronetEngine cronetEngine = myBuilder.build();
+    private UrlRequest buildSpeechTranslationRequest(Context context, CronetEngine cronetEngine,
+                                                     byte[] requestBody,
+                                                     SpeechTranslationListener translationListener) {
         Executor executor = Executors.newSingleThreadExecutor();
         String speechTranslateEndpoint = context.getString(R.string.speechToSpeechEndpoint);
         UrlRequest.Builder requestBuilder = cronetEngine.newUrlRequestBuilder(

@@ -18,6 +18,7 @@ package com.google.cloud.solutions.flexenv.common;
 import android.content.Context;
 import android.util.Log;
 
+import org.chromium.net.CronetEngine;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Assert;
@@ -38,6 +39,8 @@ import static org.junit.Assert.assertTrue;
 public class SpeechTranslationHelperAndroidTest {
     private static final String TAG = "SpeechTranslationHelperAndroidTest";
     private static String base64EncodedAudioMessage;
+    private static Context context;
+    private static CronetEngine cronetEngine;
 
     @Before
     public void readSpeechRecording16khzb64File() throws IOException {
@@ -53,17 +56,20 @@ public class SpeechTranslationHelperAndroidTest {
             stringBuilder.append(line);
         }
         base64EncodedAudioMessage = stringBuilder.toString();
+
+        context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+
+        CronetEngine.Builder myBuilder = new CronetEngine.Builder(context);
+        cronetEngine = myBuilder.build();
     }
 
     @Test
     public void translateAudioMessage_Success() throws InterruptedException {
         final Object waiter = new Object();
 
-        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-
         synchronized (waiter) {
             SpeechTranslationHelper.getInstance()
-                    .translateAudioMessage(context, base64EncodedAudioMessage,
+                    .translateAudioMessage(context, cronetEngine, base64EncodedAudioMessage,
                     16000, new SpeechTranslationHelper.SpeechTranslationListener() {
                         @Override
                         public void onTranslationSucceeded(String responseBody) {
@@ -99,11 +105,9 @@ public class SpeechTranslationHelperAndroidTest {
     public void translateAudioMessage_Wrong_SampleRate() throws InterruptedException {
         final Object waiter = new Object();
 
-        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-
         synchronized (waiter) {
             SpeechTranslationHelper.getInstance()
-                    .translateAudioMessage(context, base64EncodedAudioMessage,
+                    .translateAudioMessage(context, cronetEngine, base64EncodedAudioMessage,
                             24000, new SpeechTranslationHelper.SpeechTranslationListener() {
                                 @Override
                                 public void onTranslationSucceeded(String responseBody) {

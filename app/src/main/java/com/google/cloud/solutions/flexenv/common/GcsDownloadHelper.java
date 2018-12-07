@@ -66,11 +66,13 @@ public class GcsDownloadHelper {
      * @param gcsPath The path of the object in the bucket.
      * @param downloadListener The callback to deliver the results to.
      */
-    public void downloadGcsFile(Context context, String gcsBucket, String gcsPath, GcsDownloadListener downloadListener) {
+    public void downloadGcsFile(Context context, CronetEngine cronetEngine, String gcsBucket,
+                                String gcsPath, GcsDownloadListener downloadListener) {
         getGcsAccessToken(context, new GcsTokenListener() {
             @Override
             public void onAccessTokenRequestSucceeded(String token) {
-                UrlRequest request = buildGcsRequest(context, gcsBucket, gcsPath, token,downloadListener);
+                UrlRequest request = buildGcsRequest(context, cronetEngine, gcsBucket, gcsPath,
+                        token, downloadListener);
                 request.start();
             }
             @Override
@@ -96,9 +98,9 @@ public class GcsDownloadHelper {
         AsyncTask.execute(runnable);
     }
 
-    private UrlRequest buildGcsRequest(Context context, String gcsBucket, String gcsPath, String accessToken, GcsDownloadListener downloadListener) {
-        CronetEngine.Builder myBuilder = new CronetEngine.Builder(context);
-        CronetEngine cronetEngine = myBuilder.build();
+    private UrlRequest buildGcsRequest(Context context, CronetEngine cronetEngine, String gcsBucket,
+                                       String gcsPath, String accessToken,
+                                       GcsDownloadListener downloadListener) {
         Executor executor = Executors.newSingleThreadExecutor();
 
         String gcsPathEndpoint = context.getString(R.string.gcsBaseEndpoint) + gcsBucket + "/" + gcsPath;

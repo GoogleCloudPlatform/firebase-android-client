@@ -66,6 +66,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import org.chromium.net.CronetEngine;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -112,6 +113,7 @@ public class PlayActivity
     private String currentChannel;
     private ChildEventListener channelListener;
     private SimpleDateFormat fmt;
+    private CronetEngine cronetEngine;
 
     private Menu channelMenu;
     private TextView channelLabel;
@@ -262,7 +264,8 @@ public class PlayActivity
             mediaPlayer.start();
         } else {
             GcsDownloadHelper.getInstance().downloadGcsFile(
-                    getApplicationContext(), gcsBucket, gcsPath, new GcsDownloadHelper.GcsDownloadListener() {
+                    getApplicationContext(), getCronetEngine(), gcsBucket, gcsPath,
+                    new GcsDownloadHelper.GcsDownloadListener() {
                         @Override
                         public void onDownloadSucceeded(File file) {
                             MediaPlayer mediaPlayer = MediaPlayer.create(
@@ -342,6 +345,7 @@ public class PlayActivity
                             base64EncodedAudioMessage = Base64EncodingHelper.encode(output);
                             SpeechTranslationHelper.getInstance().translateAudioMessage(
                                     getApplicationContext(),
+                                    getCronetEngine(),
                                     base64EncodedAudioMessage,
                                     16000,
                                     new SpeechTranslationHelper.SpeechTranslationListener() {
@@ -392,6 +396,21 @@ public class PlayActivity
         } else {
             RecordingHelper.getInstance().requestRequiredPermissions(this);
         }
+    }
+
+    /**
+     * Creates an instance of the CronetEngine class.
+     * Instances of CronetEngine require a lot of resources. Additionally, their creation is slow
+     * and expensive. It's recommended to delay the creation of CronetEngine instances until they
+     * are required and reuse them as much as possible.
+     * @return An instance of CronetEngine.
+     */
+    private synchronized CronetEngine getCronetEngine() {
+        if(cronetEngine == null) {
+            CronetEngine.Builder myBuilder = new CronetEngine.Builder(this);
+            cronetEngine = myBuilder.build();
+        }
+        return cronetEngine;
     }
 
     private void updateUI() {
