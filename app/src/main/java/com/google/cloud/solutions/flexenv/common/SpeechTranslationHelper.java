@@ -104,6 +104,7 @@ public class SpeechTranslationHelper {
                             responseBodyBuilder = new StringBuilder();
                             request.read(ByteBuffer.allocateDirect((int)info.getReceivedByteCount()));
                         } else  {
+                            request.cancel();
                             String errorMessage = "Unexpected HTTP status code: " + httpStatusCode;
                             translationListener.onTranslationFailed(new SpeechTranslationException(errorMessage));
                         }
