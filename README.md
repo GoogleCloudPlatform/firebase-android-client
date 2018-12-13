@@ -52,6 +52,10 @@ The following screenshot shows messages displayed in the app:
 
 ![Nexus 5](nexus5.png)
 
+This sample supports speech messages that are automatically translated to the
+device language. For more information, see [Enable speech translation with
+Machine Learning technologies on Google Cloud Platform](SPEECH-TRANSLATION.md).
+
 ## License
 
 Copyright 2018 Google LLC. All Rights Reserved.

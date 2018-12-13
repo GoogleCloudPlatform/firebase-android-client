@@ -15,36 +15,26 @@
 
 package com.google.cloud.solutions.flexenv.common;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.google.firebase.database.ServerValue;
 
-import java.util.Map;
-
-/*
- * An instance of Message represents an actual message pushed to a channel.
+/**
+ * TextMessage represents a text-based message.
  */
+@SuppressWarnings({"WeakerAccess", "unused", "SameReturnValue"})
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Message {
+public class TextMessage extends BaseMessage {
+    private static final String TAG = "TextMessage";
+
     private String text;
-    private String displayName;
-    private Long time;
 
-    public Message() {}
+    public TextMessage() { }
 
-    public Message(String text, String displayName) {
-        this.text = text;
-        this.displayName = displayName;
+    public TextMessage(String text, String displayName, String messageType) {
+        setText(text);
+        setDisplayName(displayName);
+        setMessageType(messageType);
     }
 
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
-    public String getDisplayName() { return displayName; }
-    public void setDisplayName(String displayName) { this.displayName = displayName; }
-
-    public Map<String, String> getTime() { return ServerValue.TIMESTAMP; }
-    public void setTime(Long time) { this.time = time; }
-
-    @JsonIgnore
-    public Long getTimeLong() { return time;}
 }

@@ -21,29 +21,30 @@ import com.google.firebase.database.ServerValue;
 
 import java.util.Map;
 
-/*
- * An instance of LogEntry represents a user event log, such as sign in/out and switching a channel.
+/**
+ * BaseMessage declares properties common to all types of messages.
  */
 @SuppressWarnings({"WeakerAccess", "unused", "SameReturnValue"})
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class LogEntry {
-    private String tag;
-    private String log;
+public abstract class BaseMessage {
+    public static final String MESSAGE_TYPE_TEXT = "text";
+    public static final String MESSAGE_TYPE_SPEECH = "speech";
+
+    private static final String TAG = "BaseMessage";
+
+    private String displayName;
+    private String messageType;
     private Long time;
 
-    public LogEntry(String tag, String log) {
-        this.tag = tag;
-        this.log = log;
-    }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
 
-    public String getTag() { return tag; }
-    public void setTag(String tag) { this.tag = tag; }
-    public String getLog() { return log; }
-    public void setLog(String log) { this.log = log; }
+    public String getMessageType() { return this.messageType; }
+    public void setMessageType(String messageType) { this.messageType = messageType; }
 
     public Map<String, String> getTime() { return ServerValue.TIMESTAMP; }
     public void setTime(Long time) { this.time = time; }
 
     @JsonIgnore
-    public Long getTimeLong() { return time; }
+    public Long getTimeLong() { return time;}
 }
