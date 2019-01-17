@@ -29,7 +29,6 @@ import java.io.IOException;
  */
 public abstract class Base64EncodingHelper {
     private static final String TAG = "Base64EncodingHelper";
-    private static final int BASE64_NO_WRAP_FLAG = Base64.NO_WRAP;
 
     /**
      * Encodes the contents to a file in base64 format and returns them as a string.
@@ -44,7 +43,7 @@ public abstract class Base64EncodingHelper {
         int readBytes = input.read(data);
         Log.i(TAG, readBytes + " read from input file.");
         input.close();
-        return Base64.encodeToString(data, BASE64_NO_WRAP_FLAG);
+        return Base64.encodeToString(data, Base64.NO_WRAP);
     }
     // [END encode]
 }
