@@ -67,6 +67,7 @@ public class SpeechTranslationHelper {
     public void translateAudioMessage(Context context, CronetEngine cronetEngine,
                                       String base64EncodedAudioMessage, int sampleRateInHertz,
                                       SpeechTranslationListener translationListener) {
+        // [START json-request-body]
         JSONObject requestBody = new JSONObject();
         try {
             requestBody.put("encoding", SPEECH_TRANSLATE_ENCODING);
@@ -77,6 +78,7 @@ public class SpeechTranslationHelper {
             Log.e(TAG, e.getLocalizedMessage());
             translationListener.onTranslationFailed(e);
         }
+        // [END json-request-body]
 
         byte[] requestBodyBytes = requestBody.toString().getBytes();
         UrlRequest request = buildSpeechTranslationRequest(context, cronetEngine, requestBodyBytes, translationListener);

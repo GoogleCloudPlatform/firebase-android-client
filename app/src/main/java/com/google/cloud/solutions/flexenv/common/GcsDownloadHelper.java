@@ -85,10 +85,12 @@ public class GcsDownloadHelper {
     private void getGcsAccessToken(Context context, GcsTokenListener tokenListener) {
         Runnable runnable = () -> {
             try {
+                // [START auth-token]
                 Account currentAccount = AccountManager.get(context).getAccounts()[0];
                 String scope = "oauth2:" + context.getString(R.string.speechToSpeechOAuth2Scope);
                 String token = GoogleAuthUtil.getToken(
                         context, currentAccount, scope, new Bundle());
+                // [END auth-token]
                 tokenListener.onAccessTokenRequestSucceeded(token);
             } catch (GoogleAuthException | IOException e) {
                 Log.e(TAG, e.getLocalizedMessage());

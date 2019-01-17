@@ -43,10 +43,12 @@ import java.nio.charset.Charset;
  * PCM-16 (wave) format.
  */
 public class RecordingHelper {
-    private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
+    // [START recording-parameters]
     private static final int AUDIO_SOURCE = MediaRecorder.AudioSource.UNPROCESSED;
-    private static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO;
     private static final int SAMPLE_RATE_IN_HZ = 16000;
+    private static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO;
+    private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
+    // [END recording-parameters]
     private static final int RECORD_PERMISSIONS_REQUEST_CODE = 15623;
     private static final String TAG = "RecordingHelper";
 

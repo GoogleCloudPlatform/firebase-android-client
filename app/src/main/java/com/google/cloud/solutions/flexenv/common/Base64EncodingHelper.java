@@ -37,6 +37,7 @@ public abstract class Base64EncodingHelper {
      * @return The base64 encoded data in a string.
      * @throws IOException An exception thrown when the input file is not found or can't be closed.
      */
+    // [START encode]
     public static String encode(File inputFile) throws IOException {
         byte[] data = new byte[(int) inputFile.length()];
         DataInputStream input = new DataInputStream(new FileInputStream(inputFile));
@@ -45,4 +46,5 @@ public abstract class Base64EncodingHelper {
         input.close();
         return Base64.encodeToString(data, BASE64_NO_WRAP_FLAG);
     }
+    // [END encode]
 }
