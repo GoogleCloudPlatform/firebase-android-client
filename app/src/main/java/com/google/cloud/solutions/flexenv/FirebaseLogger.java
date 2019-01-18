@@ -15,7 +15,7 @@
 
 package com.google.cloud.solutions.flexenv;
 
-// [START FirebaseLogger]
+// [START firebase_logger]
 
 import com.google.cloud.solutions.flexenv.common.LogEntry;
 import com.google.firebase.database.DatabaseReference;
@@ -39,4 +39,4 @@ class FirebaseLogger {
     }
 
 }
-// [END FirebaseLogger]
+// [END firebase_logger]
