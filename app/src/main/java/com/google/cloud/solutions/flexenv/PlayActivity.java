@@ -507,7 +507,7 @@ public class PlayActivity
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {}
 
-// [START requestLogger]
+// [START request_logger]
     /*
      * Request that a servlet instance be assigned.
      */
@@ -530,7 +530,7 @@ public class PlayActivity
 
         databaseReference.child(REQLOG).push().setValue(inbox);
     }
-// [END requestLogger]
+// [END request_logger]
 
     /*
      * Initialize predefined channels as activity menu.
