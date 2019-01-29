@@ -46,7 +46,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.Scope;
 import com.google.cloud.solutions.flexenv.common.Base64EncodingHelper;
 import com.google.cloud.solutions.flexenv.common.BaseMessage;
 import com.google.cloud.solutions.flexenv.common.GcsDownloadHelper;
@@ -147,12 +146,6 @@ public class PlayActivity
                 new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                         .requestIdToken(getString(R.string.default_web_client_id))
                         .requestEmail();
-
-        if(speechTranslationEnabled()) {
-            Scope gcsScope = new Scope(
-                    getApplicationContext().getString(R.string.speechToSpeechOAuth2Scope));
-            gsoBuilder = gsoBuilder.requestScopes(gcsScope);
-        }
 
         GoogleSignInOptions gso = gsoBuilder.build();
         mGoogleApiClient = new GoogleApiClient.Builder(this)
