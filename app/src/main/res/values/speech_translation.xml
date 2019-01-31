@@ -12,15 +12,4 @@
         name="speechToSpeechEndpoint"
         formatted="false"
         translatable="false">https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net/speechTranslate</string>
-    <!-- OAuth 2.0 scope to allow access to read data to Google Cloud Storage buckets.
-         This allows the sample to download files with translated audio messages. -->
-    <string
-        name="speechToSpeechOAuth2Scope"
-        formatted="false"
-        translatable="false">https://www.googleapis.com/auth/devstorage.read_only</string>
-    <!-- The Google Cloud Storage base endpoint to download files from a bucket. -->
-    <string
-        name="gcsBaseEndpoint"
-        formatted="false"
-        translatable="false">https://storage.googleapis.com/</string>
 </resources>

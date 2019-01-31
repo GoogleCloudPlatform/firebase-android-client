@@ -15,16 +15,13 @@
 
 package com.google.cloud.solutions.flexenv.common;
 
-import android.accounts.Account;
-import android.accounts.AccountManager;
 import android.content.Context;
-import android.os.AsyncTask;
-import android.os.Bundle;
+import android.net.Uri;
 import android.util.Log;
 
-import com.google.android.gms.auth.GoogleAuthException;
-import com.google.android.gms.auth.GoogleAuthUtil;
-import com.google.cloud.solutions.flexenv.R;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 import org.chromium.net.CronetEngine;
 import org.chromium.net.CronetException;
@@ -68,47 +65,49 @@ public class GcsDownloadHelper {
      */
     public void downloadGcsFile(Context context, CronetEngine cronetEngine, String gcsBucket,
                                 String gcsPath, GcsDownloadListener downloadListener) {
-        getGcsAccessToken(context, new GcsTokenListener() {
-            @Override
-            public void onAccessTokenRequestSucceeded(String token) {
-                UrlRequest request = buildGcsRequest(context, cronetEngine, gcsBucket, gcsPath,
-                        token, downloadListener);
-                request.start();
-            }
-            @Override
-            public void onAccessTokenRequestFailed(Exception e) {
-                downloadListener.onDownloadFailed(e);
-            }
-        });
+        String gcsUrl = "gs://" + gcsBucket + "/" + gcsPath;
+
+        try {
+            getGcsDownloadUri(gcsUrl, task -> {
+                if (task.isSuccessful()) {
+                    Uri downloadUri = task.getResult();
+                    if (downloadUri != null) {
+                        UrlRequest request = buildGcsRequest(context, cronetEngine, gcsBucket, gcsPath,
+                                task.getResult(), downloadListener);
+                        request.start();
+                    }
+                } else {
+                    Exception e = task.getException();
+                    if (e != null) {
+                        Log.e(TAG, e.getLocalizedMessage());
+                        downloadListener.onDownloadFailed(e);
+                    }
+                }
+            });
+        } catch(IllegalArgumentException e) {
+            // FirebaseStorage rejected the gcsBucket.
+            // Verify that the gcsBucket is associated with the Firebase app.
+            Log.e(TAG, e.getLocalizedMessage());
+            downloadListener.onDownloadFailed(e);
+        }
     }
 
-    private void getGcsAccessToken(Context context, GcsTokenListener tokenListener) {
-        Runnable runnable = () -> {
-            try {
-                // [START auth_token]
-                Account currentAccount = AccountManager.get(context).getAccounts()[0];
-                String scope = "oauth2:" + context.getString(R.string.speechToSpeechOAuth2Scope);
-                String token = GoogleAuthUtil.getToken(
-                        context, currentAccount, scope, new Bundle());
-                // [END auth_token]
-                tokenListener.onAccessTokenRequestSucceeded(token);
-            } catch (GoogleAuthException | IOException e) {
-                Log.e(TAG, e.getLocalizedMessage());
-                tokenListener.onAccessTokenRequestFailed(e);
-            }
-        };
-        AsyncTask.execute(runnable);
+    private void getGcsDownloadUri(String gcsUrl, OnCompleteListener<Uri> getDownloadUriListener)
+            throws IllegalArgumentException {
+        // [START gcs_download_uri]
+        FirebaseStorage storage = FirebaseStorage.getInstance();
+        StorageReference gsReference = storage.getReferenceFromUrl(gcsUrl);
+        gsReference.getDownloadUrl().addOnCompleteListener(getDownloadUriListener);
+        // [END gcs_download_uri]
     }
 
-    private UrlRequest buildGcsRequest(Context context, CronetEngine cronetEngine, String gcsBucket,
-                                       String gcsPath, String accessToken,
+    private UrlRequest buildGcsRequest(Context context, CronetEngine cronetEngine,
+                                       String gcsBucket, String gcsPath, Uri gcsDownloadUri,
                                        GcsDownloadListener downloadListener) {
         Executor executor = Executors.newSingleThreadExecutor();
 
-        String gcsPathEndpoint = context.getString(R.string.gcsBaseEndpoint) + gcsBucket + "/" + gcsPath;
-
         UrlRequest.Builder requestBuilder = cronetEngine.newUrlRequestBuilder(
-                gcsPathEndpoint, new UrlRequest.Callback(){
+                gcsDownloadUri.toString(), new UrlRequest.Callback(){
                     FileChannel outputChannel;
                     String localPath;
                     File downloadedFile;
@@ -183,8 +182,7 @@ public class GcsDownloadHelper {
                         downloadListener.onDownloadFailed(error);
                     }
                 } , executor)
-                .setHttpMethod(GCS_DOWNLOAD_HTTP_METHOD)
-                .addHeader("Authorization", "Bearer " + accessToken);
+                .setHttpMethod(GCS_DOWNLOAD_HTTP_METHOD);
 
         return requestBuilder.build();
     }
@@ -192,9 +190,5 @@ public class GcsDownloadHelper {
     public interface GcsDownloadListener {
         void onDownloadSucceeded(File file);
         void onDownloadFailed(Exception e);
-    }
-    private interface GcsTokenListener {
-        void onAccessTokenRequestSucceeded(String token);
-        void onAccessTokenRequestFailed(Exception e);
     }
 }
