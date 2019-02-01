@@ -30,7 +30,7 @@ export FUNCTIONS_TOPIC=integration-tests-instance
 export FUNCTIONS_BUCKET=$GCLOUD_PROJECT
 gcloud auth activate-service-account --key-file "$GOOGLE_APPLICATION_CREDENTIALS"
 gcloud config set project $GCLOUD_PROJECT
-cd ./github/nodejs-docs-samples/functions/speech-to-speech
+cd ./github/nodejs-docs-samples/functions/speech-to-speech/functions
 env
 gcloud components update
 gcloud --version
@@ -72,10 +72,10 @@ cp ${KOKORO_GFILE_DIR}/google-services.json app/google-services.json
 cp ${KOKORO_GFILE_DIR}/speech_translation_test.xml app/src/main/res/values/speech_translation.xml
 
 echo "Run tests and build APK file…"
-adb logcat --clear
-adb logcat v long > logcat_sponge_log &
+# adb logcat --clear
+# adb logcat v long > logcat_sponge_log &
 ./gradlew clean check build connectedAndroidTest
-adb logcat --clear
+# adb logcat --clear
 
 echo "Delete the Cloud Function…"
 gcloud beta functions delete speechTranslate
