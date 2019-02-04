@@ -46,6 +46,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInResult;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.Status;
 import com.google.cloud.solutions.flexenv.common.Base64EncodingHelper;
 import com.google.cloud.solutions.flexenv.common.BaseMessage;
 import com.google.cloud.solutions.flexenv.common.GcsDownloadHelper;
@@ -212,8 +213,14 @@ public class PlayActivity
                                 );
                             }
                         });
+            } else if (result.getStatus().isCanceled()) {
+                String message = "Google authentication was canceled. "
+                        + "Verify the SHA certificate fingerprint in the Firebase console.";
+                Log.d(TAG, message);
+                showErrorToast(new Exception(message));
             } else {
-                updateUI();
+                Log.d(TAG, "Google authentication status: " + result.getStatus().toString());
+                showErrorToast(new Exception(result.getStatus().toString()));
             }
         }
     }
@@ -428,8 +435,7 @@ public class PlayActivity
             // Select the first channel in the array if there's no channel selected
             switchChannel(currentChannel != null ? currentChannel :
                     getResources().getStringArray(R.array.channels)[0]);
-        }
-        else {
+        } else {
             findViewById(R.id.sign_in_button).setVisibility(View.VISIBLE);
             findViewById(R.id.sign_out_button).setVisibility(View.GONE);
             findViewById(R.id.channelLabel).setVisibility(View.GONE);
