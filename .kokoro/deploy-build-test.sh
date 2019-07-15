@@ -34,7 +34,7 @@ cd ./github/nodejs-docs-samples/functions/speech-to-speech/functions
 env
 gcloud components update
 gcloud --version
-gcloud beta functions deploy speechTranslate --runtime nodejs6 --trigger-http \
+gcloud beta functions deploy speechTranslate --runtime nodejs8 --trigger-http \
     --update-env-vars ^:^OUTPUT_BUCKET=playchat-c5cc70f6-61ed-4640-91be-996721838560:SUPPORTED_LANGUAGE_CODES=en,es,fr
 
 echo "Setting up Android environment…"
