@@ -60,7 +60,7 @@ cd ${ANDROID_HOME}/tools/bin
 echo "no" | ./avdmanager create avd -n test -k "system-images;android-27;default;x86_64"
 echo ""
 echo "Start the emulator…"
-cd ..
+cd ${ANDROID_HOME}/emulator
 emulator -avd test -no-audio -no-window &
 adb wait-for-device
 
