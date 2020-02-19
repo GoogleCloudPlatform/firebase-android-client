@@ -31,10 +31,10 @@ fi
 
 export ANDROID_HOME="${HOME}/android-sdk"
 export adb_command="$ANDROID_HOME"'/platform-tools/adb'
-# Install Android SDK, tools, and build tools API 27, system image, and emulator
+# Install Android SDK, tools, and build tools API 29, system image, and emulator
 echo "y" | ${ANDROID_HOME}/tools/bin/sdkmanager \
-    "platforms;android-27" "tools" "platform-tools" "build-tools;27.0.3" \
-    "system-images;android-27;default;x86_64" "emulator"
+    "platforms;android-29" "tools" "platform-tools" "build-tools;29.0.3" \
+    "system-images;android-29;google_apis;x86_64" "emulator"
 
 export PATH=${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${PATH}
 
@@ -44,7 +44,7 @@ cp "$ANDROID_HOME"'/emulator/qemu/linux-x86_64/qemu-system-x86_64-headless' \
 
 echo "Move to the tools/bin directory…"
 cd ${ANDROID_HOME}/tools/bin
-echo "no" | ./avdmanager create avd -n test -k "system-images;android-27;default;x86_64"
+echo "no" | ./avdmanager create avd -n test -k "system-images;android-29;google_apis;x86_64"
 echo ""
 echo "Start the emulator…"
 cd ${ANDROID_HOME}/emulator
