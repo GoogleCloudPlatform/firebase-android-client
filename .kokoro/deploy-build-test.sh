@@ -30,6 +30,7 @@ if [ ! -d ${HOME}/android-sdk ]; then
 fi
 
 export ANDROID_HOME="${HOME}/android-sdk"
+export adb_command="$ANDROID_HOME"'/platform-tools/adb'
 # Install Android SDK, tools, and build tools API 27, system image, and emulator
 echo "y" | ${ANDROID_HOME}/tools/bin/sdkmanager \
     "platforms;android-27" "tools" "platform-tools" "build-tools;27.0.3" \
@@ -48,7 +49,7 @@ echo ""
 echo "Start the emulator…"
 cd ${ANDROID_HOME}/emulator
 emulator -avd test -no-audio -no-window -screen no-touch &
-adb wait-for-device
+$adb_command wait-for-device
 
 echo "Setting up speech translation microservice…"
 
@@ -77,10 +78,10 @@ cp ${KOKORO_GFILE_DIR}/google-services.json app/google-services.json
 cp ${KOKORO_GFILE_DIR}/speech_translation_test.xml app/src/main/res/values/speech_translation.xml
 
 echo "Run tests and build APK file…"
-# adb logcat --clear
-# adb logcat v long > logcat_sponge_log &
+$adb_command logcat --clear
+$adb_command logcat v long > logcat_sponge_log &
 ./gradlew clean check build connectedAndroidTest
-# adb logcat --clear
+$adb_command logcat --clear
 
 echo "Delete the Cloud Function…"
 gcloud beta functions delete speechTranslate
