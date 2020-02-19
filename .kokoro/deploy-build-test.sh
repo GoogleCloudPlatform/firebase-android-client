@@ -19,24 +19,6 @@ set -e
 # Save starting directory. The script needs it later.
 cwd=$(pwd)
 
-echo "Setting up speech translation microservice…"
-
-git clone https://github.com/GoogleCloudPlatform/nodejs-docs-samples.git github/nodejs-docs-samples
-export GOOGLE_APPLICATION_CREDENTIALS=${KOKORO_GFILE_DIR}/secrets-key.json
-export GCLOUD_PROJECT=nodejs-docs-samples-tests
-export GCF_REGION=us-central1
-export NODE_ENV=development
-export FUNCTIONS_TOPIC=integration-tests-instance
-export FUNCTIONS_BUCKET=$GCLOUD_PROJECT
-gcloud auth activate-service-account --key-file "$GOOGLE_APPLICATION_CREDENTIALS"
-gcloud config set project $GCLOUD_PROJECT
-cd ./github/nodejs-docs-samples/functions/speech-to-speech/functions
-env
-gcloud components update
-gcloud --version
-gcloud beta functions deploy speechTranslate --runtime nodejs8 --trigger-http \
-    --update-env-vars ^:^OUTPUT_BUCKET=playchat-c5cc70f6-61ed-4640-91be-996721838560:SUPPORTED_LANGUAGE_CODES=en,es,fr
-
 echo "Setting up Android environment…"
 cd ${cwd}
 if [ ! -d ${HOME}/android-sdk ]; then
@@ -67,6 +49,25 @@ echo "Start the emulator…"
 cd ${ANDROID_HOME}/emulator
 emulator -avd test -no-audio -no-window -screen no-touch &
 adb wait-for-device
+
+echo "Setting up speech translation microservice…"
+
+git clone https://github.com/GoogleCloudPlatform/nodejs-docs-samples.git github/nodejs-docs-samples
+export QT_DEBUG_PLUGINS=1
+export GOOGLE_APPLICATION_CREDENTIALS=${KOKORO_GFILE_DIR}/secrets-key.json
+export GCLOUD_PROJECT=nodejs-docs-samples-tests
+export GCF_REGION=us-central1
+export NODE_ENV=development
+export FUNCTIONS_TOPIC=integration-tests-instance
+export FUNCTIONS_BUCKET=$GCLOUD_PROJECT
+gcloud auth activate-service-account --key-file "$GOOGLE_APPLICATION_CREDENTIALS"
+gcloud config set project $GCLOUD_PROJECT
+cd ./github/nodejs-docs-samples/functions/speech-to-speech/functions
+env
+gcloud components update
+gcloud --version
+gcloud beta functions deploy speechTranslate --runtime nodejs8 --trigger-http \
+    --update-env-vars ^:^OUTPUT_BUCKET=playchat-c5cc70f6-61ed-4640-91be-996721838560:SUPPORTED_LANGUAGE_CODES=en,es,fr
 
 echo "Move to the root directory of the repo…"
 cd ${cwd}/github/firebase-android-client
