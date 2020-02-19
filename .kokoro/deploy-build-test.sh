@@ -55,6 +55,10 @@ echo "y" | ${ANDROID_HOME}/tools/bin/sdkmanager \
 
 export PATH=${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${PATH}
 
+echo "Use the headless emulator build..."
+cp "$ANDROID_HOME"'/emulator/qemu/linux-x86_64/qemu-system-x86_64-headless' \
+   "$ANDROID_HOME"'/emulator/qemu/linux-x86_64/qemu-system-x86_64'
+
 echo "Move to the tools/bin directory…"
 cd ${ANDROID_HOME}/tools/bin
 echo "no" | ./avdmanager create avd -n test -k "system-images;android-27;default;x86_64"
