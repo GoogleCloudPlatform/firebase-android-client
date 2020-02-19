@@ -65,7 +65,7 @@ echo "no" | ./avdmanager create avd -n test -k "system-images;android-27;default
 echo ""
 echo "Start the emulator…"
 cd ${ANDROID_HOME}/emulator
-emulator -avd test -no-audio -no-window &
+emulator -avd test -no-audio -no-window -screen no-touch &
 adb wait-for-device
 
 echo "Move to the root directory of the repo…"
