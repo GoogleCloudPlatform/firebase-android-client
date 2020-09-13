@@ -78,6 +78,7 @@ public class SpeechTranslationHelperAndroidTest {
                                 JSONObject response = new JSONObject(responseBody);
                                 assertTrue(response.has("transcription"));
                             } catch (JSONException e) {
+                                Log.i(TAG, e.getMessage());
                                 Assert.fail();
                             } finally {
                                 synchronized (waiter) {
@@ -88,6 +89,7 @@ public class SpeechTranslationHelperAndroidTest {
 
                         @Override
                         public void onTranslationFailed(Exception e) {
+                            Log.i(TAG, e.getMessage());
                             Assert.fail();
                             synchronized (waiter) {
                                 waiter.notify();
@@ -111,6 +113,7 @@ public class SpeechTranslationHelperAndroidTest {
                             24000, new SpeechTranslationHelper.SpeechTranslationListener() {
                                 @Override
                                 public void onTranslationSucceeded(String responseBody) {
+                                    Log.i(TAG, responseBody);
                                     Assert.fail();
                                 }
 
