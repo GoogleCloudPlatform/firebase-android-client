@@ -67,9 +67,10 @@ cd ./github/nodejs-docs-samples/functions/speech-to-speech/functions
 env
 gcloud components update
 gcloud --version
-gcloud functions deploy speechTranslate --runtime nodejs10 --trigger-http --allow-unauthenticated \
+gcloud functions deploy speechTranslate --runtime nodejs10 --trigger-http \
     --update-env-vars ^:^OUTPUT_BUCKET=playchat-c5cc70f6-61ed-4640-91be-996721838560:SUPPORTED_LANGUAGE_CODES=en,es,fr
 
+gcloud alpha functions add-iam-policy-binding speechTranslate --member=allUsers --role=roles/cloudfunctions.invoker
 echo "Move to the root directory of the repo…"
 cd ${cwd}/github/firebase-android-client
 

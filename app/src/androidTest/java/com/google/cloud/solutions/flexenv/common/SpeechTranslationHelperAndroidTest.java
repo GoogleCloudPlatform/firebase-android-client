@@ -119,6 +119,7 @@ public class SpeechTranslationHelperAndroidTest {
 
                                 @Override
                                 public void onTranslationFailed(Exception e) {
+                                    Log.i(TAG, e.getMessage());
                                     Assert.assertTrue(e.getMessage().contains("INVALID_ARGUMENT: sample_rate_hertz"));
                                     synchronized (waiter) {
                                         waiter.notify();
