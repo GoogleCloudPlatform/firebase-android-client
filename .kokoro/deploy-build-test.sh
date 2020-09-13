@@ -75,7 +75,7 @@ cd ${cwd}/github/firebase-android-client
 
 # Copy the Google services configuration file and test values
 cp ${KOKORO_GFILE_DIR}/google-services.json app/google-services.json
-cp ${KOKORO_GFILE_DIR}/speech_translation_test.xml app/src/main/res/values/speech_translation.xml
+# cp ${KOKORO_GFILE_DIR}/speech_translation_test.xml app/src/main/res/values/speech_translation.xml
 
 echo "Run tests and build APK file…"
 $adb_command logcat --clear
