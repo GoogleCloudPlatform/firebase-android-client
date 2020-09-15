@@ -22,7 +22,7 @@ repository.
 
 Build and test environment:
 
-- Android Studio 3.1.2 from the stable channel.
+- Android Studio 4.0.1 from the stable channel.
 - Android 8.1 (API Level 27) emulator.
 
 ## Configuration

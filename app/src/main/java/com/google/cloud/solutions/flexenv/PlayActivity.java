@@ -19,13 +19,6 @@ import android.content.Intent;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.design.widget.NavigationView;
-import android.support.v4.view.GravityCompat;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -40,13 +33,21 @@ import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.auth.api.Auth;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.auth.api.signin.GoogleSignInResult;
-import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.SignInButton;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.common.api.Status;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.material.navigation.NavigationView;
 import com.google.cloud.solutions.flexenv.common.Base64EncodingHelper;
 import com.google.cloud.solutions.flexenv.common.BaseMessage;
 import com.google.cloud.solutions.flexenv.common.GcsDownloadHelper;
@@ -89,7 +90,6 @@ import java.util.Map;
 public class PlayActivity
         extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-        GoogleApiClient.OnConnectionFailedListener,
         AdapterView.OnItemClickListener,
         View.OnKeyListener,
         View.OnClickListener {
@@ -107,7 +107,7 @@ public class PlayActivity
     private static final String FIREBASE_LOGGER_PATH_KEY = "FIREBASE_LOGGER_PATH_KEY";
     private static FirebaseLogger fbLog;
 
-    private GoogleApiClient mGoogleApiClient;
+    private GoogleSignInClient mGoogleSignInClient;
     private String firebaseLoggerPath;
     private String inbox;
     private String currentChannel;
@@ -149,10 +149,7 @@ public class PlayActivity
                         .requestEmail();
 
         GoogleSignInOptions gso = gsoBuilder.build();
-        mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .enableAutoManage(this, this)
-                .addApi(Auth.GOOGLE_SIGN_IN_API, gso)
-                .build();
+        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
         SignInButton signInButton = findViewById(R.id.sign_in_button);
         signInButton.setSize(SignInButton.SIZE_STANDARD);
@@ -183,13 +180,15 @@ public class PlayActivity
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == RC_SIGN_IN) {
-            GoogleSignInResult result = Auth.GoogleSignInApi.getSignInResultFromIntent(data);
-            Log.d(TAG, "Google authentication status: " + result.getStatus().getStatusMessage());
+            Task<GoogleSignInAccount> signInTask =
+                    GoogleSignIn.getSignedInAccountFromIntent(data);
             // If Google ID authentication is successful, obtain a token for Firebase authentication.
-            if (result.isSuccess() && result.getSignInAccount() != null) {
+            if (signInTask.isSuccessful()) {
+                // Sign in succeeded, proceed with account
+                GoogleSignInAccount acct = signInTask.getResult();
                 status.setText(getResources().getString(R.string.authenticating_label));
                 AuthCredential credential = GoogleAuthProvider.getCredential(
-                        result.getSignInAccount().getIdToken(), null);
+                        acct.getIdToken(), null);
                 FirebaseAuth.getInstance().signInWithCredential(credential)
                         .addOnCompleteListener(this, task -> {
                             Log.d(TAG, "signInWithCredential:onComplete Successful: " + task.isSuccessful());
@@ -213,14 +212,15 @@ public class PlayActivity
                                 );
                             }
                         });
-            } else if (result.getStatus().isCanceled()) {
+            } else if (signInTask.isCanceled()) {
                 String message = "Google authentication was canceled. "
                         + "Verify the SHA certificate fingerprint in the Firebase console.";
                 Log.d(TAG, message);
                 showErrorToast(new Exception(message));
             } else {
-                Log.d(TAG, "Google authentication status: " + result.getStatus().toString());
-                showErrorToast(new Exception(result.getStatus().toString()));
+                String message = "Google authentication status: " + signInTask.getResult();
+                Log.d(TAG, message);
+                showErrorToast(new Exception(message));
             }
         }
     }
@@ -232,7 +232,7 @@ public class PlayActivity
                 signOut();
                 break;
             case R.id.sign_in_button:
-                Intent signInIntent = Auth.GoogleSignInApi.getSignInIntent(mGoogleApiClient);
+                Intent signInIntent = mGoogleSignInClient.getSignInIntent();
                 // Start authenticating with Google ID first.
                 startActivityForResult(signInIntent, RC_SIGN_IN);
                 break;
@@ -258,7 +258,7 @@ public class PlayActivity
         String filePath = gcsBucket + "/" + gcsPath;
         File file = new File(getFilesDir(), filePath);
 
-        if(file.exists()) {
+        if (file.exists()) {
             MediaPlayer mediaPlayer = MediaPlayer.create(
                     getApplicationContext(), Uri.fromFile(file));
             mediaPlayer.start();
@@ -284,15 +284,18 @@ public class PlayActivity
     }
 
     private void signOut() {
-        Auth.GoogleSignInApi.signOut(mGoogleApiClient).setResultCallback(
-                status -> {
-                    FirebaseAuth.getInstance().signOut();
-                    DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
-                    databaseReference.removeEventListener(channelListener);
-                    databaseReference.onDisconnect();
-                    inbox = null;
-                    runOnUiThread(PlayActivity.this::updateUI);
-                    fbLog.log(inbox, "Signed out");
+        mGoogleSignInClient.signOut()
+                .addOnCompleteListener(this, new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        FirebaseAuth.getInstance().signOut();
+                        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+                        databaseReference.removeEventListener(channelListener);
+                        databaseReference.onDisconnect();
+                        inbox = null;
+                        runOnUiThread(PlayActivity.this::updateUI);
+                        fbLog.log(inbox, "Signed out");
+                    }
                 });
     }
 
@@ -321,6 +324,7 @@ public class PlayActivity
         messageAdapter.notifyDataSetChanged();
         messageText.setText("");
     }
+
     private void addMessage(String msgString, String meta, String gcsBucket, String gcsPath) {
         Map<String, String> message = new HashMap<>();
         // 🔈 Prepend a speaker emoji to text.
@@ -334,7 +338,7 @@ public class PlayActivity
     }
 
     private void translateAudioMessage(View v) {
-        ImageButton microphoneButton = (ImageButton)v;
+        ImageButton microphoneButton = (ImageButton) v;
         if (RecordingHelper.getInstance().hasRequiredPermissions(getApplicationContext())) {
             if (!RecordingHelper.getInstance().isRecording()) {
                 RecordingHelper.getInstance().startRecording(new RecordingHelper.RecordingListener() {
@@ -354,12 +358,12 @@ public class PlayActivity
                                             Log.i(TAG, responseBody);
                                             try {
                                                 final FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-                                                if(currentUser != null) {
+                                                if (currentUser != null) {
                                                     SpeechMessage speechMessage = new SpeechMessage(
                                                             new JSONObject(responseBody),
                                                             currentUser.getDisplayName(),
                                                             BaseMessage.MESSAGE_TYPE_SPEECH
-                                                            );
+                                                    );
                                                     FirebaseDatabase.getInstance().getReference().child(CHS + "/" + currentChannel)
                                                             .push()
                                                             .setValue(speechMessage);
@@ -403,10 +407,11 @@ public class PlayActivity
      * Instances of CronetEngine require a lot of resources. Additionally, their creation is slow
      * and expensive. It's recommended to delay the creation of CronetEngine instances until they
      * are required and reuse them as much as possible.
+     *
      * @return An instance of CronetEngine.
      */
     private synchronized CronetEngine getCronetEngine() {
-        if(cronetEngine == null) {
+        if (cronetEngine == null) {
             CronetEngine.Builder myBuilder = new CronetEngine.Builder(this);
             cronetEngine = myBuilder.build();
         }
@@ -422,13 +427,13 @@ public class PlayActivity
             findViewById(R.id.messageText).setVisibility(View.VISIBLE);
             findViewById(R.id.messageHistory).setVisibility(View.VISIBLE);
 
-            if(speechTranslationEnabled()) {
+            if (speechTranslationEnabled()) {
                 findViewById(R.id.microphone_button).setVisibility(View.VISIBLE);
             }
 
             status.setText(
                     String.format(getResources().getString(R.string.signed_in_label),
-                    currentUser.getDisplayName())
+                            currentUser.getDisplayName())
             );
             findViewById(R.id.status).setVisibility(View.VISIBLE);
 
@@ -443,7 +448,7 @@ public class PlayActivity
             findViewById(R.id.microphone_button).setVisibility(View.GONE);
             findViewById(R.id.messageHistory).setVisibility(View.GONE);
             findViewById(R.id.status).setVisibility(View.GONE);
-            ((TextView)findViewById(R.id.status)).setText("");
+            ((TextView) findViewById(R.id.status)).setText("");
         }
     }
 
@@ -471,7 +476,8 @@ public class PlayActivity
         messages.clear();
 
         String msg = "Switching channel to '" + channel + "'";
-        fbLog.log(inbox, msg);
+        if (fbLog != null)
+            fbLog.log(inbox, msg);
 
         // Switching a listener to the selected channel.
         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
@@ -503,10 +509,7 @@ public class PlayActivity
         super.onRestoreInstanceState(savedInstanceState);
     }
 
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {}
-
-// [START request_logger]
+    // [START request_logger]
     /*
      * Request that a servlet instance be assigned.
      */
@@ -546,14 +549,14 @@ public class PlayActivity
         channelListener = new ChildEventListener() {
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, String prevKey) {
-                if(snapshot.hasChild("/messageType")) {
+                if (snapshot.hasChild("/messageType")) {
                     String messageType = snapshot.child("/messageType").getValue(String.class);
-                    if(messageType != null) {
+                    if (messageType != null) {
                         // Extract attributes from appropriate message object to display on the screen.
                         if (messageType.equals(BaseMessage.MESSAGE_TYPE_TEXT)) {
                             TextMessage message = snapshot.getValue(TextMessage.class);
-                            if(message != null) {
-                                addMessage(message.getText(),fmt.format(new Date(message.getTimeLong())) + " "
+                            if (message != null) {
+                                addMessage(message.getText(), fmt.format(new Date(message.getTimeLong())) + " "
                                         + message.getDisplayName());
                             }
                         } else if (messageType.equals(BaseMessage.MESSAGE_TYPE_SPEECH)) {
@@ -563,7 +566,7 @@ public class PlayActivity
                                     .getConfiguration()
                                     .getLocales()
                                     .get(0).getLanguage();
-                            if(message != null) {
+                            if (message != null) {
                                 Translation translation = message.getTranslation(language);
                                 addMessage(translation.getText(), fmt.format(new Date(message.getTimeLong())) + " "
                                         + message.getDisplayName(), message.getGcsBucket(), translation.getGcsPath());
@@ -579,13 +582,16 @@ public class PlayActivity
             }
 
             @Override
-            public void onChildChanged(@NonNull DataSnapshot snapshot, String prevKey) {}
+            public void onChildChanged(@NonNull DataSnapshot snapshot, String prevKey) {
+            }
 
             @Override
-            public void onChildRemoved(@NonNull DataSnapshot snapshot) {}
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+            }
 
             @Override
-            public void onChildMoved(@NonNull DataSnapshot snapshot, String prevKey) {}
+            public void onChildMoved(@NonNull DataSnapshot snapshot, String prevKey) {
+            }
         };
     }
 
