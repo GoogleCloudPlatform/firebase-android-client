@@ -11,5 +11,5 @@
     <string
         name="speechToSpeechEndpoint"
         formatted="false"
-        translatable="false">https://us-central1-qwiklab-gke-debugging.cloudfunctions.net/speechTranslate</string>
+        translatable="false">https://us-central1-YOUR-PROJECT-ID.cloudfunctions.net/speechTranslate</string>
 </resources>
