@@ -1,3 +1,9 @@
+![status: inactive](https://img.shields.io/badge/status-inactive-red.svg)
+
+This project is no longer actively developed or maintained.
+
+For new work on this check out [this sample](https://github.com/firebase/quickstart-android).
+
 # Build a mobile app using Firebase and App Engine flexible environment
 
 ![Kokoro Build Status](https://storage.googleapis.com/cloud-devrel-kokoro-resources/java/badges/firebase-android-client.svg)
